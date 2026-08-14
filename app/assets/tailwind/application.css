@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* Tailwind v4: especifica onde buscar classes usadas */
+@source "../../views/**/*.erb";
+@source "../../javascript/**/*.js";
+@source "../../../lib/**/*.rb";

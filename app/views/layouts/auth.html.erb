@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Mappointr</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="min-h-screen bg-slate-50 flex flex-col">
+    <% if notice %>
+      <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-green-100 text-green-800 text-sm rounded-lg shadow border border-green-200">
+        <%= notice %>
+      </div>
+    <% end %>
+    <% if alert %>
+      <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-red-100 text-red-800 text-sm rounded-lg shadow border border-red-200">
+        <%= alert %>
+      </div>
+    <% end %>
+
+    <div class="flex-1 flex items-center justify-center px-4 py-16">
+      <div class="w-full max-w-sm">
+        <div class="text-center mb-8">
+          <%= link_to root_path, class: "inline-flex items-center gap-2 text-2xl font-bold text-gray-900 hover:text-red-600 transition" do %>
+            <span>📍</span>
+            <span>Mappointr</span>
+          <% end %>
+          <p class="text-gray-500 text-sm mt-1">O jogo de geografia</p>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-lg p-8">
+          <%= yield %>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

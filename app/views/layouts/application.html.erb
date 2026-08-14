@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Mappointr" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+
+    <style>
+      .leaflet-container img,
+      .leaflet-container .leaflet-tile {
+        max-width: none !important;
+        max-height: none !important;
+      }
+    </style>
+
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="bg-slate-50 min-h-screen">
+    <nav class="fixed top-0 inset-x-0 bg-white border-b border-gray-200 z-50">
+      <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+        <%= link_to root_path, class: "flex items-center gap-2 font-bold text-gray-900 text-lg hover:text-red-600 transition" do %>
+          <span>📍</span>
+          <span>Mappointr</span>
+        <% end %>
+
+        <div class="flex items-center gap-4">
+          <% if user_signed_in? %>
+            <span class="text-sm text-gray-500 hidden sm:block"><%= current_user.email %></span>
+            <%= button_to "Sair", destroy_user_session_path, method: :delete,
+                class: "text-sm text-gray-600 hover:text-red-600 transition cursor-pointer" %>
+          <% else %>
+            <%= link_to "Entrar", new_user_session_path,
+                class: "text-sm text-gray-600 hover:text-red-600 transition" %>
+            <%= link_to "Criar conta", new_user_registration_path,
+                class: "text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition" %>
+          <% end %>
+        </div>
+      </div>
+    </nav>
+
+    <% if notice %>
+      <div class="fixed top-16 left-1/2 -translate-x-1/2 z-40 px-4 py-2 bg-green-100 text-green-800 text-sm rounded-lg shadow border border-green-200">
+        <%= notice %>
+      </div>
+    <% end %>
+    <% if alert %>
+      <div class="fixed top-16 left-1/2 -translate-x-1/2 z-40 px-4 py-2 bg-red-100 text-red-800 text-sm rounded-lg shadow border border-red-200">
+        <%= alert %>
+      </div>
+    <% end %>
+
+    <main class="max-w-5xl mx-auto pt-20 pb-8 px-4">
+      <%= yield %>
+    </main>
+  </body>
+</html>
