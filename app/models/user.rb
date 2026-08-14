@@ -24,6 +24,10 @@ class User < ApplicationRecord
     game_rounds.successful_guesses.count
   end
 
+  def wrong_games
+    game_rounds.wrong.count
+  end
+
   # Porcentagem de acertos exatos (dentro do país)
   def accuracy_percentage
     return 0 if total_games.zero?

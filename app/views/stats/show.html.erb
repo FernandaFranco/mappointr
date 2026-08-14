@@ -1,0 +1,53 @@
+<%# View de estatísticas do jogador logado %>
+<%# Variáveis: @user %>
+
+<div class="w-full max-w-2xl mx-auto">
+  <div class="bg-white rounded-lg shadow-lg p-6">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Minhas estatísticas</h1>
+
+    <% if @user.total_games.zero? %>
+      <div class="text-center py-8 text-gray-500">
+        <p class="mb-4">Você ainda não jogou nenhuma rodada.</p>
+        <%= link_to "Jogar agora", new_game_path,
+            class: "inline-block bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150" %>
+      </div>
+    <% else %>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">Rodadas jogadas</div>
+          <div class="text-2xl font-bold text-gray-800"><%= @user.total_games %></div>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">Acertos exatos</div>
+          <div class="text-2xl font-bold text-green-600"><%= @user.correct_games %></div>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">Quase acertos</div>
+          <div class="text-2xl font-bold text-yellow-600"><%= @user.close_games %></div>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">Erros</div>
+          <div class="text-2xl font-bold text-red-600"><%= @user.wrong_games %></div>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">Taxa de acerto exato</div>
+          <div class="text-2xl font-bold text-gray-800"><%= @user.accuracy_percentage %>%</div>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">Taxa de sucesso</div>
+          <div class="text-2xl font-bold text-gray-800"><%= @user.success_percentage %>%</div>
+        </div>
+      </div>
+
+      <div class="mt-8">
+        <%= link_to "Jogar de novo", new_game_path,
+            class: "block w-full text-center bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150" %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -7,6 +7,9 @@ Rails.application.routes.draw do
   # GET  /play/:id → Mostra resultado de uma rodada específica
   resources :games, path: "play", only: [ :new, :create, :show ]
 
+  # Estatísticas do jogador logado
+  resource :stats, only: :show
+
   # Página inicial redireciona para o jogo
   root "games#new"
 

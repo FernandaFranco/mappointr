@@ -9,3 +9,9 @@ fernanda:
 visitante:
   email: visitante@example.com
   encrypted_password: <%= Devise::Encryptor.digest(User, "password123") %>
+
+# Sem game_rounds — usado para testar os casos de "zero jogos" (guards de
+# divisão por zero nas porcentagens e o estado vazio da página de estatísticas)
+novato:
+  email: novato@example.com
+  encrypted_password: <%= Devise::Encryptor.digest(User, "password123") %>
