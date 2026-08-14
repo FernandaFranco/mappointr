@@ -1,0 +1,127 @@
+<%# View de resultado da rodada %>
+<%# Variáveis: @game_round, @country, @stats %>
+
+<div class="w-full max-w-4xl mx-auto">
+  <%# Container do mapa com marcadores %>
+  <% centroid = @country.centroid %>
+  <% nearest_point = @country.nearest_border_point(@game_round.guessed_lat, @game_round.guessed_lng) %>
+  <div id="result-map-container"
+       class="w-full h-64 bg-gray-200 rounded-lg mb-6"
+       data-controller="result-map"
+       data-result-map-guessed-lat-value="<%= @game_round.guessed_lat %>"
+       data-result-map-guessed-lng-value="<%= @game_round.guessed_lng %>"
+       data-result-map-centroid-lat-value="<%= centroid&.dig(:lat) || 0 %>"
+       data-result-map-centroid-lng-value="<%= centroid&.dig(:lng) || 0 %>"
+       data-result-map-nearest-lat-value="<%= nearest_point&.dig(:lat) || 0 %>"
+       data-result-map-nearest-lng-value="<%= nearest_point&.dig(:lng) || 0 %>"
+       data-result-map-country-name-value="<%= @country.name_pt %>"
+       data-result-map-boundary-value="<%= @country.boundary_geojson %>"
+       data-result-map-is-correct-value="<%= @game_round.correct? %>">
+  </div>
+
+  <%# Card de resultado %>
+  <div class="bg-white rounded-lg shadow-lg p-6">
+    <%# Mensagem principal baseada no resultado %>
+    <div class="text-center mb-6">
+      <% case @game_round.result %>
+      <% when "correct" %>
+        <div class="text-6xl mb-2">🎯</div>
+        <h1 class="text-3xl font-bold text-green-600"><%= @game_round.result_message %></h1>
+        <p class="text-gray-600 mt-2">Você acertou em cheio o <%= @country.name_pt %>!</p>
+      <% when "close" %>
+        <div class="text-6xl mb-2">👏</div>
+        <h1 class="text-3xl font-bold text-yellow-600"><%= @game_round.result_message %></h1>
+        <p class="text-gray-600 mt-2">
+          Seu chute está a <strong><%= @game_round.distance_km %> km</strong> de <%= @country.name_pt %>
+        </p>
+      <% when "wrong" %>
+        <div class="text-6xl mb-2">😅</div>
+        <h1 class="text-3xl font-bold text-red-600"><%= @game_round.result_message %></h1>
+        <p class="text-gray-600 mt-2">
+          Seu chute está a <strong><%= number_with_delimiter(@game_round.distance_km) %> km</strong> de <%= @country.name_pt %>
+        </p>
+      <% end %>
+    </div>
+
+    <%# Estatísticas da jogada %>
+    <div class="border-t pt-6">
+      <h2 class="text-lg font-semibold text-gray-800 mb-4">Suas estatísticas</h2>
+
+      <div class="grid grid-cols-2 gap-4">
+        <%# Tempo %>
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">Tempo de resposta</div>
+          <div class="text-2xl font-bold text-gray-800">
+            <%= @game_round.time_seconds %>s
+          </div>
+        </div>
+
+        <%# Distância %>
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">Distância até a fronteira</div>
+          <div class="text-2xl font-bold text-gray-800">
+            <%= number_with_delimiter(@game_round.distance_km) %> km
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%# Comparação com outros jogadores %>
+    <% if @stats[:total_attempts] > 1 %>
+      <div class="border-t pt-6 mt-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-4">Comparação com outros jogadores</h2>
+
+        <div class="space-y-3">
+          <%# Percentual de acertos %>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-600">Taxa de acerto deste país</span>
+            <span class="font-semibold">
+              <%= @stats[:correct_percentage] %>% acertaram
+            </span>
+          </div>
+
+          <%# Percentil de distância %>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-600">Precisão do seu chute</span>
+            <span class="font-semibold text-green-600">
+              Melhor que <%= @stats[:distance_percentile] %>% dos jogadores
+            </span>
+          </div>
+
+          <%# Percentil de tempo %>
+          <div class="flex justify-between items-center">
+            <span class="text-gray-600">Velocidade de resposta</span>
+            <span class="font-semibold text-blue-600">
+              Mais rápido que <%= @stats[:time_percentile] %>% dos jogadores
+            </span>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <div class="border-t pt-6 mt-6 text-center text-gray-500">
+        <p>Você é o primeiro a jogar este país! 🎉</p>
+      </div>
+    <% end %>
+
+    <%# Botão para jogar novamente %>
+    <div class="mt-8">
+      <%= link_to "Jogar de novo?", new_game_path,
+          class: "block w-full text-center bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150" %>
+    </div>
+  </div>
+
+  <%# Debug info (remover em produção) %>
+  <% if Rails.env.development? %>
+    <details class="mt-4 text-xs text-gray-400">
+      <summary>Debug info</summary>
+      <pre class="mt-2 p-2 bg-gray-100 rounded overflow-x-auto">
+País: <%= @country.name %> (<%= @country.name_pt %>)
+Chute: (<%= @game_round.guessed_lat %>, <%= @game_round.guessed_lng %>)
+Distância: <%= @game_round.distance_km %> km
+Resultado: <%= @game_round.result %>
+Tempo: <%= @game_round.time_seconds %>s
+Stats: <%= @stats.inspect %>
+      </pre>
+    </details>
+  <% end %>
+</div>

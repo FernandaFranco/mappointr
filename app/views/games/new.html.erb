@@ -1,0 +1,40 @@
+<%# View para nova rodada do jogo %>
+<%# O país é passado pelo controller como @country %>
+
+<div class="w-full max-w-4xl mx-auto">
+  <%# Cabeçalho com a pergunta %>
+  <div class="text-center mb-6">
+    <h1 class="text-2xl font-semibold text-gray-800">
+      Onde fica <span class="text-red-600 font-bold"><%= @country.name_pt %></span>?
+    </h1>
+    <p class="text-gray-500 text-sm mt-1">
+      Clique no mapa para registrar seu chute
+    </p>
+  </div>
+
+  <%# Container do mapa - será inicializado pelo Stimulus na Fase 5 %>
+  <div id="map-container"
+       class="w-full h-96 bg-gray-100 rounded-lg border-2 border-gray-300 relative"
+       data-controller="map"
+       data-map-country-id-value="<%= @country.id %>">
+
+    <%# Placeholder temporário - será substituído pelo Leaflet %>
+    <div class="absolute inset-0 flex items-center justify-center text-center text-gray-500" data-map-target="placeholder">
+      <div>
+        <p class="text-lg">Carregando mapa...</p>
+      </div>
+    </div>
+  </div>
+
+  <%# Informações sobre o país (dificuldade) %>
+  <div class="mt-4 text-center">
+    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+      <%= case @country.difficulty
+          when 'easy' then 'bg-green-100 text-green-800'
+          when 'medium' then 'bg-yellow-100 text-yellow-800'
+          when 'hard' then 'bg-red-100 text-red-800'
+          end %>">
+      Dificuldade: <%= @country.difficulty.capitalize %>
+    </span>
+  </div>
+</div>

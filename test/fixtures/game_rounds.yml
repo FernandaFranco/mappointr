@@ -1,0 +1,34 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+#
+# Atenção: fixtures não disparam callbacks, então distance_km e result são
+# gravados explicitamente (em jogo real, GameRound os calcula via PostGIS).
+
+# Chute dentro de Atlantis → distância 0
+acerto:
+  user: fernanda
+  country: atlantis
+  guessed_lat: 5.0
+  guessed_lng: 5.0
+  distance_km: 0
+  time_seconds: 12
+  result: correct
+
+# Chute a ~330km da fronteira de Atlantis → "quase"
+quase:
+  user: visitante
+  country: atlantis
+  guessed_lat: 5.0
+  guessed_lng: 13.0
+  distance_km: 332
+  time_seconds: 25
+  result: close
+
+# Chute do outro lado do mundo → erro
+erro:
+  user: visitante
+  country: atlantis
+  guessed_lat: -30.0
+  guessed_lng: 150.0
+  distance_km: 14000
+  time_seconds: 40
+  result: wrong
