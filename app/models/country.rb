@@ -23,14 +23,15 @@ class Country < ApplicationRecord
   def distance_from(lat, lng)
     # ST_Distance retorna metros quando usamos geography
     # Dividimos por 1000 para ter km
-    result = self.class.connection.select_value(<<~SQL)
+    sql = self.class.sanitize_sql_array([ <<~SQL, lng: lng, lat: lat, id: id ])
       SELECT ST_Distance(
         boundary::geography,
-        ST_SetSRID(ST_MakePoint(#{lng}, #{lat}), 4326)::geography
+        ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography
       ) / 1000.0 AS distance_km
       FROM countries
-      WHERE id = #{id}
+      WHERE id = :id
     SQL
+    result = self.class.connection.select_value(sql)
     result.to_f.round(1)
   end
 
@@ -38,14 +39,15 @@ class Country < ApplicationRecord
   # Nota: ST_Contains requer geometry (não geography)
   # Usamos cast explícito para geometry
   def contains?(lat, lng)
-    result = self.class.connection.select_value(<<~SQL)
+    sql = self.class.sanitize_sql_array([ <<~SQL, lng: lng, lat: lat, id: id ])
       SELECT ST_Contains(
         boundary::geometry,
-        ST_SetSRID(ST_MakePoint(#{lng}, #{lat}), 4326)
+        ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)
       )
       FROM countries
-      WHERE id = #{id}
+      WHERE id = :id
     SQL
+    result = self.class.connection.select_value(sql)
     result == true || result == "t"
   end
 
@@ -73,13 +75,14 @@ class Country < ApplicationRecord
 
   # Retorna o ponto mais próximo na fronteira a partir de um ponto dado
   def nearest_border_point(lat, lng)
-    result = self.class.connection.select_one(<<~SQL)
+    sql = self.class.sanitize_sql_array([ <<~SQL, lng: lng, lat: lat, id: id ])
       SELECT
-        ST_Y(ST_ClosestPoint(boundary::geometry, ST_SetSRID(ST_MakePoint(#{lng}, #{lat}), 4326))) AS lat,
-        ST_X(ST_ClosestPoint(boundary::geometry, ST_SetSRID(ST_MakePoint(#{lng}, #{lat}), 4326))) AS lng
+        ST_Y(ST_ClosestPoint(boundary::geometry, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))) AS lat,
+        ST_X(ST_ClosestPoint(boundary::geometry, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326))) AS lng
       FROM countries
-      WHERE id = #{id}
+      WHERE id = :id
     SQL
+    result = self.class.connection.select_one(sql)
     return nil unless result
     { lat: result["lat"].to_f.round(4), lng: result["lng"].to_f.round(4) }
   end
