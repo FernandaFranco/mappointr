@@ -39,4 +39,91 @@ class UserTest < ActiveSupport::TestCase
     assert_equal 0, novato.accuracy_percentage
     assert_equal 0, novato.success_percentage
   end
+
+  # --- next_difficulty ---
+
+  test "next_difficulty é medium para um usuário sem nenhuma rodada" do
+    assert_equal :medium, users(:novato).next_difficulty
+  end
+
+  test "next_difficulty é medium para um usuário com menos de MIN_ROUNDS_FOR_PROGRESSION rodadas" do
+    novato = users(:novato)
+    # 4 rodadas, todas corretas — menos que o mínimo de 5 para sair de :medium
+    create_rounds(novato, [ :correct, :correct, :correct, :correct ])
+
+    assert_equal 4, novato.total_games
+    assert_equal :medium, novato.next_difficulty
+  end
+
+  test "next_difficulty é hard quando as últimas ROUNDS_WINDOW rodadas têm >= 70% de sucesso" do
+    novato = users(:novato)
+    # 10 rodadas: 7 successful (correct/close) + 3 wrong = 70% success_rate
+    create_rounds(novato, [ :correct, :correct, :correct, :close, :close, :close, :close, :wrong, :wrong, :wrong ])
+
+    assert_equal :hard, novato.next_difficulty
+  end
+
+  test "next_difficulty é easy quando as últimas ROUNDS_WINDOW rodadas têm < 40% de sucesso" do
+    novato = users(:novato)
+    # 10 rodadas: 3 successful (correct/close) + 7 wrong = 30% success_rate
+    create_rounds(novato, [ :correct, :close, :close, :wrong, :wrong, :wrong, :wrong, :wrong, :wrong, :wrong ])
+
+    assert_equal :easy, novato.next_difficulty
+  end
+
+  test "next_difficulty é medium quando a taxa de sucesso está entre os dois limiares" do
+    novato = users(:novato)
+    # 10 rodadas: 5 successful (correct/close) + 5 wrong = 50% success_rate
+    create_rounds(novato, [ :correct, :correct, :close, :close, :close, :wrong, :wrong, :wrong, :wrong, :wrong ])
+
+    assert_equal :medium, novato.next_difficulty
+  end
+
+  # next_difficulty olha só para a janela de ROUNDS_WINDOW rodadas mais recentes,
+  # não para a média histórica (success_percentage). Um usuário com uma sequência
+  # ruim no início (que puxaria a média histórica para baixo) mas uma sequência
+  # recente muito boa deve terminar em uma dificuldade melhor do que a média
+  # histórica sugeriria — esse é o ponto inteiro de usar uma janela.
+  test "next_difficulty usa uma janela recente, não a média histórica" do
+    novato = users(:novato)
+
+    # 6 rodadas antigas, todas erradas
+    create_rounds(novato, [ :wrong, :wrong, :wrong, :wrong, :wrong, :wrong ])
+    # 10 rodadas recentes, todas corretas (janela = 100% de sucesso)
+    create_rounds(novato, [ :correct ] * 10)
+
+    # Média histórica: 10 successful em 16 rodadas = 62.5%, o que sozinho
+    # ficaria abaixo do limiar de :hard (70%) — mas a janela recente é 100%.
+    assert_in_delta 62.5, novato.success_percentage, 0.01
+    assert_equal :hard, novato.next_difficulty
+  end
+
+  private
+
+  # Cria rodadas de jogo para +user+ com os resultados dados, em ordem
+  # cronológica (a primeira da lista é a mais antiga). Como fixtures não
+  # disparam callbacks mas game_rounds.create! dispara, escolhemos
+  # coordenadas dentro/fora de atlantis para forçar o resultado desejado e
+  # depois ajustamos created_at manualmente para controlar a ordenação usada
+  # por next_difficulty (created_at desc).
+  COORDS_FOR_RESULT = {
+    correct: { lat: 5.0, lng: 5.0 },   # dentro de atlantis → distância 0
+    close: { lat: 5.0, lng: 13.0 },    # ~330km da fronteira → close
+    wrong: { lat: -30.0, lng: 150.0 }  # do outro lado do mundo → wrong
+  }.freeze
+
+  def create_rounds(user, results)
+    base_time = 1.hour.ago
+    results.each_with_index do |result, index|
+      coords = COORDS_FOR_RESULT.fetch(result)
+      round = user.game_rounds.create!(
+        country: countries(:atlantis),
+        guessed_lat: coords[:lat],
+        guessed_lng: coords[:lng],
+        time_seconds: 10
+      )
+      round.update_column(:created_at, base_time + index.seconds)
+      assert_equal result.to_s, round.result, "fixture de coordenadas para #{result} não produziu o resultado esperado"
+    end
+  end
 end

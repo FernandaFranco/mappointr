@@ -39,4 +39,30 @@ class User < ApplicationRecord
     return 0 if total_games.zero?
     (successful_games.to_f / total_games * 100).round(1)
   end
+
+  # Quantas rodadas recentes olhamos para decidir a próxima dificuldade
+  ROUNDS_WINDOW = 10
+  # Mínimo de rodadas jogadas antes de sair do padrão :medium
+  MIN_ROUNDS_FOR_PROGRESSION = 5
+  HARD_THRESHOLD_PERCENTAGE = 70
+  EASY_THRESHOLD_PERCENTAGE = 40
+
+  # Dificuldade sugerida para a próxima rodada, baseada nas últimas
+  # ROUNDS_WINDOW jogadas (não na média histórica) — assim o jogo reage a
+  # uma melhora ou piora recente, não fica preso ao desempenho lá do início
+  def next_difficulty
+    recent_ids = game_rounds.order(created_at: :desc).limit(ROUNDS_WINDOW).pluck(:id)
+    return :medium if recent_ids.size < MIN_ROUNDS_FOR_PROGRESSION
+
+    successful_count = GameRound.where(id: recent_ids).successful_guesses.count
+    success_rate = successful_count.to_f / recent_ids.size * 100
+
+    if success_rate >= HARD_THRESHOLD_PERCENTAGE
+      :hard
+    elsif success_rate >= EASY_THRESHOLD_PERCENTAGE
+      :medium
+    else
+      :easy
+    end
+  end
 end

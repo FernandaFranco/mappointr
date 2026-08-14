@@ -3,10 +3,16 @@ class GamesController < ApplicationController
   before_action :authenticate_user!
 
   # GET /play/new (ou /)
-  # Inicia uma nova rodada: sorteia país e mostra o mapa
+  # Inicia uma nova rodada: sorteia país (considerando a dificuldade
+  # sugerida para o jogador) e mostra o mapa
   def new
-    # Sorteia um país aleatório
-    @country = Country.order("RANDOM()").first
+    @country = Country.random(difficulty: current_user.next_difficulty)
+
+    # Nenhum país jogável disponível (tabela vazia ou tudo excluded)
+    if @country.nil?
+      render :unavailable, status: :service_unavailable
+      return
+    end
 
     # Guarda o país sorteado e o tempo de início na sessão
     # Isso evita que o jogador trapaceie recarregando a página

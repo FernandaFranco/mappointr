@@ -14,8 +14,19 @@ class Country < ApplicationRecord
   scope :playable, -> { where(excluded: false) }
 
   # Sorteia um país aleatório entre os jogáveis
-  def self.random
-    playable.offset(rand(playable.count)).first
+  # Se difficulty for informado, prioriza países daquela dificuldade;
+  # se não houver nenhum jogável naquela dificuldade, cai de volta para
+  # qualquer país jogável (nunca retorna um excluded, nunca sorteia de um
+  # escopo vazio)
+  def self.random(difficulty: nil)
+    scope = playable
+    if difficulty.present?
+      tiered = scope.where(difficulty: difficulty)
+      scope = tiered if tiered.exists?
+    end
+    count = scope.count
+    return nil if count.zero?
+    scope.offset(rand(count)).first
   end
 
   # Calcula a distância em km de um ponto até a fronteira do país
