@@ -99,13 +99,6 @@ including these agents', so it is the shared base they all build on.
 Real issues in this codebase, each a good first task for one of the agents. Found
 by reading the code; not yet fixed.
 
-**Scoring bug — pinned, not fixed.** `Country#distance_from` rounds to one decimal,
-then `GameRound#calculate_distance_and_result` calls `.to_i` on it. A guess 557m
-*outside* the border truncates to `0` and is scored `correct`. `test-writer` has
-covered the scoring branches in `test/models/game_round_test.rb`; the bug itself is
-documented by the last test there, currently `skip`ped. Fix the rounding in the
-model, delete the `skip` line, and the test should go green.
-
 **The draw ignores its own scope.** `GamesController#new` uses
 `Country.order("RANDOM()").first`, which bypasses `Country.playable` — so
 `excluded: true` countries can be drawn — and duplicates the existing

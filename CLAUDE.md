@@ -71,6 +71,8 @@ calcula o tempo. `#show` exibe o resultado com estatísticas comparativas.
   são escritos à mão nos arquivos de fixture.
 - Fixtures de `users` precisam de `encrypted_password` gerado com
   `<%= Devise::Encryptor.digest(User, "password123") %>`.
-- `Country#distance_from` arredonda para 1 casa decimal, mas `GameRound` faz `.to_i`
-  no resultado — chutes a menos de 1km **fora** da fronteira viram `correct`.
+- `Country#distance_from` arredonda para 1 casa decimal e `GameRound` arredonda de
+  novo com `.round` (não `.to_i`) — usar `.to_i` truncava chutes a menos de 1km
+  **fora** da fronteira para distância 0, premiando como `correct`. Já corrigido;
+  não reintroduza o truncamento.
 - O diretório `test/system/` está vazio, mas o CI roda `test:system`.
