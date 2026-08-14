@@ -1,0 +1,20 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+#
+# Países sintéticos com fronteiras quadradas simples, para que as consultas
+# PostGIS (distance_from, contains?, centroid) tenham geometria real para usar.
+
+# Quadrado de 10°x10° na origem (0,0). Centroide esperado: 5, 5
+atlantis:
+  name: Atlantis
+  name_pt: Atlântida
+  difficulty: medium
+  excluded: false
+  boundary: "SRID=4326;MULTIPOLYGON(((0 0, 10 0, 10 10, 0 10, 0 0)))"
+
+# Mesmo tamanho, ~40° a leste. Excluído do sorteio, para testar o escopo :playable
+pacifica:
+  name: Pacifica
+  name_pt: Pacífica
+  difficulty: hard
+  excluded: true
+  boundary: "SRID=4326;MULTIPOLYGON(((40 0, 50 0, 50 10, 40 10, 40 0)))"
