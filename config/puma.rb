@@ -29,6 +29,26 @@ port ENV.fetch("PORT", 3000)
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 
+# Roda o supervisor do Solid Queue (dispatcher + workers do RoomSweepJob)
+# dentro do próprio processo do Puma, em vez de um processo `bin/jobs`
+# separado. Dois motivos, não só preferência: (1) config/cable.yml usa o
+# adapter `async` em desenvolvimento — um pub/sub só válido dentro do MESMO
+# processo, então um broadcast disparado por um processo de job separado
+# nunca chegaria aos navegadores conectados ao servidor web; (2) este repo
+# não tem infraestrutura de deploy pra um segundo processo (sem Kamal, sem
+# Procfile de produção, Dockerfile de um único CMD) — o plugin evita
+# inventar uma topologia nova só pra isso.
+#
+# IMPORTANTE: o modo padrão do plugin (`:fork`) cria um processo do SO
+# separado — copy-on-write depois do fork, então o pub/sub em memória do
+# adapter `async` NÃO seria compartilhado, recriando exatamente o problema
+# que queremos evitar. `solid_queue_mode :async` é o que garante que o
+# supervisor roda como threads dentro do MESMO processo Ruby.
+if ENV.fetch("SOLID_QUEUE_IN_PUMA", "true") == "true"
+  plugin :solid_queue
+  solid_queue_mode :async
+end
+
 # Specify the PID file. Defaults to tmp/pids/server.pid in development.
 # In other environments, only set the PID file if requested.
 pidfile ENV["PIDFILE"] if ENV["PIDFILE"]

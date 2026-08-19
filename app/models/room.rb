@@ -43,7 +43,58 @@ class Room < ApplicationRecord
     update_column(:last_activity_at, Time.current)
   end
 
+  def start_next_round!
+    country = Country.random(difficulty: difficulty)
+    round_number = current_round_number + 1
+    room_round = RoomRound.create!(room: self, country: country, round_number: round_number, started_at: Time.current)
+    update!(current_round_number: round_number, current_room_round: room_round)
+  end
+
+  # Avança o estado da sala se (e só se) já for hora — recalcula tudo a
+  # partir do banco antes de agir, então é seguro chamar a qualquer momento,
+  # de múltiplas abas ao mesmo tempo, ou de um job em background (ver
+  # RoomSweepJob). Deliberadamente NÃO chama touch_activity! — isso fica a
+  # cargo de quem chamou (só uma request HTTP real conta como atividade;
+  # se o job marcasse atividade também, uma sala verdadeiramente abandonada
+  # nunca ficaria stale, porque o próprio sweep manteria ela "viva").
+  def advance!
+    with_lock do
+      round = current_room_round
+
+      if round&.due_for_finalization?
+        round.finalize!
+        broadcast_results
+      elsif round&.finished? && Time.current >= round.ended_at + Room::REVEAL_PAUSE_SECONDS
+        advance_past_reveal!
+      end
+    end
+  end
+
+  def broadcast_round
+    broadcast_replace_to(self, target: "room_body", partial: "rooms/round",
+      locals: { room: self, room_round: current_room_round })
+  end
+
+  def broadcast_results
+    broadcast_replace_to(self, target: "room_body", partial: "rooms/results",
+      locals: { room: self, room_round: current_room_round })
+  end
+
+  def broadcast_leaderboard
+    broadcast_replace_to(self, target: "room_body", partial: "rooms/leaderboard", locals: { room: self })
+  end
+
   private
+
+  def advance_past_reveal!
+    if current_round_number >= total_rounds
+      update!(status: :finished)
+      broadcast_leaderboard
+    else
+      start_next_round!
+      broadcast_round
+    end
+  end
 
   def generate_code
     return if code.present?

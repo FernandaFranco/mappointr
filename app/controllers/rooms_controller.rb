@@ -67,29 +67,20 @@ class RoomsController < ApplicationController
     end
 
     @room.update!(status: :in_progress)
-    start_next_round!(@room)
+    @room.start_next_round!
     @room.touch_activity!
-    broadcast_round(@room)
+    @room.broadcast_round
     redirect_to room_path(@room)
   end
 
   # POST /rooms/:id/advance
-  # Chamado (repetidamente) pelo cliente via Stimulus para avançar a sala.
-  # Não confia no timing do cliente: recalcula tudo a partir do estado no
-  # banco antes de agir, então é seguro chamar a qualquer momento e de
-  # múltiplas abas ao mesmo tempo.
+  # Chamado (repetidamente) pelo cliente via Stimulus para avançar a sala,
+  # e também periodicamente por RoomSweepJob em background — cobre o caso
+  # de todo mundo ter saído da página antes do fim da rodada. A lógica em
+  # si (não confia no timing de quem chamou, recalcula tudo a partir do
+  # banco) fica em Room#advance!, compartilhada entre controller e job.
   def advance
-    @room.with_lock do
-      round = @room.current_room_round
-
-      if round&.due_for_finalization?
-        round.finalize!
-        broadcast_results(@room)
-      elsif round&.finished? && Time.current >= round.ended_at + Room::REVEAL_PAUSE_SECONDS
-        advance_past_reveal!(@room)
-      end
-    end
-
+    @room.advance!
     @room.touch_activity!
     head :no_content
   end
@@ -115,42 +106,11 @@ class RoomsController < ApplicationController
     permitted
   end
 
-  def start_next_round!(room)
-    country = Country.random(difficulty: room.difficulty)
-    round_number = room.current_round_number + 1
-    room_round = RoomRound.create!(room: room, country: country, round_number: round_number, started_at: Time.current)
-    room.update!(current_round_number: round_number, current_room_round: room_round)
-  end
-
-  def advance_past_reveal!(room)
-    if room.current_round_number >= room.total_rounds
-      room.update!(status: :finished)
-      broadcast_leaderboard(room)
-    else
-      start_next_round!(room)
-      broadcast_round(room)
-    end
-  end
-
   # Substitui a sala de espera inteira (não só a lista de jogadores): quem
   # entra pode fazer a sala cruzar o limiar de MIN_PLAYERS, e a visibilidade
   # do botão "Iniciar jogo" depende desse total — não só do que dá pra
   # atualizar sostituindo o `id="room_players"` sozinho.
   def broadcast_lobby(room)
     room.broadcast_replace_to(room, target: "room_body", partial: "rooms/waiting_room", locals: { room: room })
-  end
-
-  def broadcast_round(room)
-    room.broadcast_replace_to(room, target: "room_body", partial: "rooms/round",
-      locals: { room: room, room_round: room.current_room_round })
-  end
-
-  def broadcast_results(room)
-    room.broadcast_replace_to(room, target: "room_body", partial: "rooms/results",
-      locals: { room: room, room_round: room.current_room_round })
-  end
-
-  def broadcast_leaderboard(room)
-    room.broadcast_replace_to(room, target: "room_body", partial: "rooms/leaderboard", locals: { room: room })
   end
 end

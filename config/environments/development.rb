@@ -58,6 +58,12 @@ Rails.application.configure do
   # Highlight code that enqueued background job in logs.
   config.active_job.verbose_enqueue_logs = true
 
+  # RoomSweepJob (varre salas em andamento abandonadas) precisa rodar de
+  # verdade em dev, não só ser enfileirado — sem isso o gap que ele existe
+  # pra cobrir (todo mundo saiu da aba antes do fim da rodada) não aparece
+  # localmente.
+  config.active_job.queue_adapter = :solid_queue
+
   # Suppress logger output for asset requests.
   config.assets.quiet = true
 

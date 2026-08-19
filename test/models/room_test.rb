@@ -92,9 +92,52 @@ class RoomTest < ActiveSupport::TestCase
     assert_in_delta momento_futuro.to_i, room.reload.last_activity_at.to_i, 1
   end
 
+  test "advance! não faz nada quando a rodada ainda não venceu" do
+    room = iniciar_sala_em_andamento(jogadores: 2)
+    rodada_original = room.current_room_round
+
+    room.advance!
+
+    assert_equal rodada_original.id, room.reload.current_room_round_id
+    assert room.current_room_round.reload.active?
+  end
+
+  # RoomSweepJob chama advance! em background, sem nenhuma request HTTP por
+  # trás — se advance! tocasse em last_activity_at, uma sala genuinamente
+  # abandonada nunca ficaria stale, porque o próprio sweep manteria ela
+  # "viva" a cada tick. Só uma request real (RoomsController#advance) pode
+  # contar como atividade.
+  test "advance! nunca atualiza last_activity_at, mesmo quando avança de verdade" do
+    room = iniciar_sala_em_andamento(jogadores: 2, total_rounds: 1)
+    rodada = room.current_room_round
+    rodada.room.room_players.each_with_index do |rp, i|
+      GameRound.create!(user: rp.user, country: rodada.country, room_round: rodada,
+        guessed_lat: 5.0, guessed_lng: 5.0, time_seconds: 5 + i)
+    end
+    atividade_antes = room.last_activity_at
+
+    travel 1.hour do
+      room.advance!
+    end
+
+    assert_equal atividade_antes.to_i, room.reload.last_activity_at.to_i
+  end
+
   private
 
   def create_users(count)
     Array.new(count) { |i| User.create!(email: "jogador_extra_#{i}_#{SecureRandom.hex(4)}@example.com", password: "password123") }
+  end
+
+  # Sala já em andamento, host + N-1 jogadores extras, via caminho real
+  # (start_next_round! através de room.update! + start_next_round!).
+  def iniciar_sala_em_andamento(jogadores:, total_rounds: 5)
+    room = Room.create!(host: users(:fernanda), total_rounds: total_rounds, difficulty: :medium)
+    room.room_players.create!(user: users(:fernanda))
+    create_users(jogadores - 1).each { |u| room.room_players.create!(user: u) }
+
+    room.update!(status: :in_progress)
+    room.start_next_round!
+    room
   end
 end

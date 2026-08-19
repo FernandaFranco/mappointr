@@ -71,7 +71,10 @@ Rails.application.configure do
   # config.cache_store = :mem_cache_store
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
-  # config.active_job.queue_adapter = :resque
+  # Sem base de dados separada pra fila: um Postgres só, um tipo de job —
+  # as tabelas do Solid Queue vivem na base primária (ver migration
+  # create_solid_queue_tables), sem config.solid_queue.connects_to.
+  config.active_job.queue_adapter = :solid_queue
   # config.active_job.queue_name_prefix = "mappointr_production"
 
   config.action_mailer.perform_caching = false

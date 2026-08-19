@@ -7,9 +7,13 @@ import { Controller } from "@hotwired/stimulus"
  *
  * O servidor nunca confia no timing do cliente: cada ping em advanceUrl
  * só tem efeito se o servidor, ao recalcular por conta própria, concordar
- * que já é hora de avançar. Por isso é seguro (e necessário, já que não há
- * job em background) que qualquer aba conectada fique avisando —
- * a atualização visual real chega via Turbo Stream broadcast.
+ * que já é hora de avançar. Por isso é seguro que qualquer aba conectada
+ * fique avisando — a atualização visual real chega via Turbo Stream
+ * broadcast. Este ping continua sendo o caminho rápido normal (reação
+ * quase instantânea enquanto alguém está com a aba aberta); o RoomSweepJob
+ * em background (config/recurring.yml) é só o fallback pra quando todo
+ * mundo sai da sala antes do fim da rodada — os dois chamam a mesma
+ * Room#advance!, então rodar junto é seguro (idempotente).
  *
  * Uso no HTML:
  *   <div data-controller="room-countdown"
