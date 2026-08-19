@@ -1,0 +1,24 @@
+<%# Jogador já respondeu esta rodada, esperando os outros — variáveis: room, room_round %>
+<%# Só é renderizado a partir de show.html.erb (request normal), nunca via
+    broadcast, então current_user não é necessário aqui. %>
+
+<div class="bg-white rounded-lg shadow-lg p-6">
+  <div class="flex items-center justify-between mb-4">
+    <span class="text-sm text-gray-500">Rodada <%= room.current_round_number %> de <%= room.total_rounds %></span>
+
+    <div data-controller="room-countdown"
+         data-room-countdown-seconds-left-value="<%= [ (room_round.started_at + room.round_duration_seconds - Time.current).to_i, 0 ].max %>"
+         data-room-countdown-advance-url-value="<%= advance_room_path(room) %>"
+         class="text-sm font-mono text-gray-600">
+      ⏱ <span data-room-countdown-target="display"></span>s
+    </div>
+  </div>
+
+  <div class="text-center text-gray-500 py-16">
+    <p>Chute registrado! Esperando os outros jogadores…</p>
+  </div>
+
+  <div id="room_progress" class="mt-4">
+    <%= render "rooms/progress", room_round: room_round %>
+  </div>
+</div>

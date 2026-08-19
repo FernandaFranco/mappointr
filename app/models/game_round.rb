@@ -2,6 +2,7 @@ class GameRound < ApplicationRecord
   # Relacionamentos
   belongs_to :user
   belongs_to :country
+  belongs_to :room_round, optional: true
 
   # Enum para resultado da jogada
   # correct: chute dentro do país (distância = 0)
@@ -18,6 +19,7 @@ class GameRound < ApplicationRecord
   validates :guessed_lng, presence: true,
             numericality: { greater_than_or_equal_to: -180, less_than_or_equal_to: 180 }
   validates :time_seconds, presence: true, numericality: { greater_than: 0 }
+  validates :room_round_id, uniqueness: { scope: :user_id }, allow_nil: true
 
   # Callbacks - calcula distância e resultado antes de salvar
   before_validation :calculate_distance_and_result, on: :create

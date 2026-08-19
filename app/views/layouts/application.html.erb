@@ -44,6 +44,8 @@
 
         <div class="flex items-center gap-4">
           <% if user_signed_in? %>
+            <%= link_to "Jogar com amigos", new_room_path,
+                class: "text-sm text-gray-600 hover:text-red-600 transition" %>
             <%= link_to "Minhas estatísticas", stats_path,
                 class: "text-sm text-gray-600 hover:text-red-600 transition" %>
             <span class="text-sm text-gray-500 hidden sm:block"><%= current_user.email %></span>

@@ -98,6 +98,31 @@ class UserTest < ActiveSupport::TestCase
     assert_equal :hard, novato.next_difficulty
   end
 
+  # next_difficulty olha só para game_rounds.where(room_round_id: nil): jogadas
+  # de sala não são um sinal válido de desempenho individual (o país da sala é
+  # sorteado pela dificuldade da SALA, não pelo desempenho do jogador), então
+  # devem ficar fora da janela usada para decidir a próxima dificuldade.
+  test "next_difficulty ignora jogadas de sala (room_round_id presente) na sua janela" do
+    novato = users(:novato)
+    # 10 rodadas solo recentes, todas wrong (janela = 0% de sucesso) → :easy
+    create_rounds(novato, [ :wrong ] * 10)
+
+    assert_equal :easy, novato.next_difficulty
+
+    # Um monte de jogadas DE SALA, todas corretas — se fossem indevidamente
+    # incluídas na janela, dominariam as 10 solo e empurrariam para :hard.
+    room = Room.create!(host: novato)
+    room.room_players.create!(user: novato)
+    10.times do |i|
+      room_round = RoomRound.create!(room: room, country: countries(:atlantis), round_number: i + 1, started_at: Time.current)
+      GameRound.create!(user: novato, country: countries(:atlantis), room_round: room_round,
+        guessed_lat: 5.0, guessed_lng: 5.0, time_seconds: 5)
+    end
+
+    assert_equal 20, novato.total_games, "as jogadas de sala devem existir e contar para total_games..."
+    assert_equal :easy, novato.next_difficulty, "...mas não devem entrar na janela de next_difficulty"
+  end
+
   private
 
   # Cria rodadas de jogo para +user+ com os resultados dados, em ordem

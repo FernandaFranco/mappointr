@@ -10,6 +10,16 @@ Rails.application.routes.draw do
   # Estatísticas do jogador logado
   resource :stats, only: :show
 
+  # Salas multiplayer em tempo real
+  post "rooms/join", to: "rooms#join", as: :join_room
+  resources :rooms, only: [ :new, :create, :show ] do
+    member do
+      post :start
+      post :advance
+    end
+    resources :guesses, only: [ :create ], controller: "room_guesses"
+  end
+
   # Página inicial redireciona para o jogo
   root "games#new"
 

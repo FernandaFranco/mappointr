@@ -1,0 +1,51 @@
+<%# Resultado da rodada revelado a todos — variáveis: room, room_round %>
+
+<div class="bg-white rounded-lg shadow-lg p-6">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-lg font-semibold text-gray-800">Resultado da rodada <%= room.current_round_number %></h2>
+
+    <div data-controller="room-countdown"
+         data-room-countdown-seconds-left-value="<%= [ (room_round.ended_at + Room::REVEAL_PAUSE_SECONDS - Time.current).to_i, 0 ].max %>"
+         data-room-countdown-advance-url-value="<%= advance_room_path(room) %>"
+         class="text-sm font-mono text-gray-500">
+      próxima rodada em <span data-room-countdown-target="display"></span>s
+    </div>
+  </div>
+
+  <p class="text-sm text-gray-500 mb-4">
+    Era <span class="font-semibold text-gray-700"><%= room_round.country.name_pt %></span>.
+  </p>
+
+  <table class="w-full text-sm mb-6">
+    <thead>
+      <tr class="text-left text-gray-500 border-b">
+        <th class="py-2 font-medium">Jogador</th>
+        <th class="py-2 font-medium">Resultado</th>
+        <th class="py-2 font-medium text-right">Distância</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% room_round.game_rounds.includes(:user).order(:distance_km).each do |game_round| %>
+        <tr class="border-b last:border-0">
+          <td class="py-2 text-gray-800"><%= game_round.user.email %></td>
+          <td class="py-2">
+            <span class="font-medium <%= game_round.correct? ? "text-green-600" : (game_round.close? ? "text-yellow-600" : "text-red-600") %>">
+              <%= game_round.result_message %>
+            </span>
+          </td>
+          <td class="py-2 text-right text-gray-600"><%= number_with_delimiter(game_round.distance_km) %> km</td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <h3 class="text-sm font-semibold text-gray-700 mb-2">Placar</h3>
+  <ol class="space-y-1">
+    <% room.room_players.includes(:user).order(score: :desc).each do |room_player| %>
+      <li class="flex justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
+        <span class="text-gray-800"><%= room_player.user.email %></span>
+        <span class="font-semibold text-gray-800"><%= room_player.score %> pts</span>
+      </li>
+    <% end %>
+  </ol>
+</div>

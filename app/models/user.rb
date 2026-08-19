@@ -6,6 +6,8 @@ class User < ApplicationRecord
 
   # Relacionamentos
   has_many :game_rounds, dependent: :destroy
+  has_many :room_players, dependent: :destroy
+  has_many :rooms, through: :room_players
 
   # Métodos de estatísticas do usuário
   def total_games
@@ -49,9 +51,12 @@ class User < ApplicationRecord
 
   # Dificuldade sugerida para a próxima rodada, baseada nas últimas
   # ROUNDS_WINDOW jogadas (não na média histórica) — assim o jogo reage a
-  # uma melhora ou piora recente, não fica preso ao desempenho lá do início
+  # uma melhora ou piora recente, não fica preso ao desempenho lá do início.
+  # Jogadas de sala (room_round_id presente) não entram na janela: o país
+  # de uma rodada de sala é sorteado pela dificuldade da sala, não pelo
+  # desempenho individual do jogador, então não é um sinal válido aqui.
   def next_difficulty
-    recent_ids = game_rounds.order(created_at: :desc).limit(ROUNDS_WINDOW).pluck(:id)
+    recent_ids = game_rounds.where(room_round_id: nil).order(created_at: :desc).limit(ROUNDS_WINDOW).pluck(:id)
     return :medium if recent_ids.size < MIN_ROUNDS_FOR_PROGRESSION
 
     successful_count = GameRound.where(id: recent_ids).successful_guesses.count

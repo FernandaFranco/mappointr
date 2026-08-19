@@ -1,0 +1,53 @@
+<%# Tela para criar uma sala nova ou entrar em uma existente por código %>
+
+<div class="w-full max-w-md mx-auto space-y-6">
+  <div class="bg-white rounded-lg shadow-lg p-6">
+    <h1 class="text-xl font-bold text-gray-900 mb-1">Criar uma sala</h1>
+    <p class="text-sm text-gray-500 mb-6">Jogue em tempo real com amigos, cada um no seu dispositivo.</p>
+
+    <%= form_for @room, url: rooms_path do |f| %>
+      <% if @room.errors.any? %>
+        <div class="mb-4 text-sm text-red-600">
+          <%= @room.errors.full_messages.join(", ") %>
+        </div>
+      <% end %>
+
+      <div class="space-y-4">
+        <div>
+          <%= f.label :total_rounds, "Número de rodadas", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.number_field :total_rounds, value: f.object.total_rounds || 5, min: 1, max: 20,
+              class: "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500" %>
+        </div>
+
+        <div>
+          <%= f.label :round_duration_seconds, "Tempo por rodada (segundos)", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.number_field :round_duration_seconds, value: f.object.round_duration_seconds || 45, min: 10, max: 300,
+              class: "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500" %>
+        </div>
+
+        <div>
+          <%= f.label :difficulty, "Dificuldade", class: "block text-sm font-medium text-gray-700 mb-1" %>
+          <%= f.select :difficulty,
+              options_for_select([ [ "Qualquer", "" ], [ "Fácil", "easy" ], [ "Média", "medium" ], [ "Difícil", "hard" ] ]),
+              {}, class: "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500" %>
+        </div>
+
+        <%= f.submit "Criar sala", class: "w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-lg transition cursor-pointer mt-2" %>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="bg-white rounded-lg shadow-lg p-6">
+    <h2 class="text-lg font-bold text-gray-900 mb-1">Já tem um código?</h2>
+    <p class="text-sm text-gray-500 mb-4">Digite o código que seu amigo compartilhou.</p>
+
+    <%= form_tag join_room_path, method: :post do %>
+      <div class="flex gap-2">
+        <%= text_field_tag :code, nil, placeholder: "Ex: VT4SHF", maxlength: 6,
+            class: "flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm uppercase tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500" %>
+        <%= submit_tag "Entrar",
+            class: "bg-gray-800 hover:bg-gray-900 text-white font-semibold py-2.5 px-4 rounded-lg transition cursor-pointer" %>
+      </div>
+    <% end %>
+  </div>
+</div>

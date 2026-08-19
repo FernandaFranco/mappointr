@@ -7,10 +7,14 @@ import { Controller } from "@hotwired/stimulus"
  *   <div data-controller="map"
  *        data-map-country-id-value="123">
  *   </div>
+ *
+ * Em salas multiplayer, passe data-map-submit-url-value apontando para o
+ * endpoint de chute da sala (por padrão envia para o jogo solo, /play).
  */
 export default class extends Controller {
   static values = {
-    countryId: Number
+    countryId: Number,
+    submitUrl: { type: String, default: "/play" }
   }
 
   static targets = ["placeholder"]
@@ -107,7 +111,7 @@ export default class extends Controller {
     // Cria um formulário invisível e submete
     const form = document.createElement("form")
     form.method = "POST"
-    form.action = "/play"
+    form.action = this.submitUrlValue
 
     // Token CSRF (obrigatório no Rails)
     const csrfToken = document.querySelector("meta[name='csrf-token']").content

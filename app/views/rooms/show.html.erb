@@ -1,0 +1,40 @@
+<%# View de uma sala multiplayer — despacha pelo status da sala %>
+<%# turbo_stream_from mantém esta página em tempo real: o servidor troca o
+    conteúdo de #room_body (e, na espera, #room_players) via broadcast %>
+
+<%= turbo_stream_from @room %>
+
+<div class="w-full max-w-2xl mx-auto">
+  <div class="flex items-center justify-between mb-4">
+    <h1 class="text-lg font-bold text-gray-900">
+      Sala <span class="font-mono tracking-widest"><%= @room.code %></span>
+    </h1>
+    <% if @room.waiting? %>
+      <span class="text-xs text-gray-400">aguardando início</span>
+    <% end %>
+  </div>
+
+  <div id="room_body">
+    <% case @room.status %>
+    <% when "waiting" %>
+      <%= render "waiting_room", room: @room %>
+    <% when "in_progress" %>
+      <% room_round = @room.current_room_round %>
+      <% if room_round&.finished? %>
+        <%= render "results", room: @room, room_round: room_round %>
+      <% elsif room_round&.game_rounds&.exists?(user: current_user) %>
+        <%= render "waiting_for_others", room: @room, room_round: room_round %>
+      <% else %>
+        <%= render "round", room: @room, room_round: room_round %>
+      <% end %>
+    <% when "finished" %>
+      <%= render "leaderboard", room: @room %>
+    <% when "expired" %>
+      <div class="bg-white rounded-lg shadow-lg p-6 text-center text-gray-500">
+        <p>Essa sala expirou por inatividade.</p>
+        <%= link_to "Criar uma nova sala", new_room_path,
+            class: "inline-block mt-4 text-red-600 hover:text-red-700 font-semibold" %>
+      </div>
+    <% end %>
+  </div>
+</div>

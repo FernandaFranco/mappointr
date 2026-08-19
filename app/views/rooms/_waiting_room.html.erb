@@ -1,0 +1,26 @@
+<%# Sala de espera antes do início — variáveis: room %>
+<%# ATENÇÃO: assim como rooms/_round.html.erb, este partial é renderizado
+    tanto por uma request normal (rooms#show) quanto via broadcast_replace_to
+    (quando alguém entra na sala) — não use current_user aqui.
+
+    Por isso o botão "Iniciar jogo" aparece pra todo mundo assim que há
+    jogadores suficientes, não só pro host: não dá pra decidir "é o host?"
+    de forma diferente por destinatário dentro de um único broadcast. Isso é
+    seguro porque RoomsController#start já rejeita quem não é host no
+    servidor — um não-host que clicar só recebe o alerta de volta. %>
+
+<div class="bg-white rounded-lg shadow-lg p-6 text-center">
+  <p class="text-sm text-gray-500 mb-1">Compartilhe este código com seus amigos</p>
+  <p class="text-4xl font-mono font-bold tracking-widest text-red-600 mb-6"><%= room.code %></p>
+
+  <div id="room_players" class="mb-6 text-left">
+    <%= render "rooms/player_list", room: room %>
+  </div>
+
+  <% if room.enough_players_to_start? %>
+    <%= button_to "Iniciar jogo", start_room_path(room), method: :post,
+        class: "w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150 cursor-pointer" %>
+  <% else %>
+    <p class="text-sm text-gray-400">Esperando pelo menos <%= Room::MIN_PLAYERS %> jogadores para começar…</p>
+  <% end %>
+</div>

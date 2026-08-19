@@ -70,6 +70,60 @@ class GameRoundTest < ActiveSupport::TestCase
     assert_equal "close", jogada.result
   end
 
+  # --- room_round_id: uniqueness (feature de salas multiplayer) ---
+
+  # validates :room_round_id, uniqueness: { scope: :user_id }, allow_nil: true
+  test "um usuário não pode ter duas jogadas na mesma room_round" do
+    room_round = criar_room_round
+    primeira = GameRound.create!(user: users(:fernanda), country: countries(:atlantis),
+      room_round: room_round, guessed_lat: 5.0, guessed_lng: 5.0, time_seconds: 5)
+    assert primeira.persisted?
+
+    segunda = GameRound.new(user: users(:fernanda), country: countries(:atlantis),
+      room_round: room_round, guessed_lat: 6.0, guessed_lng: 6.0, time_seconds: 5)
+
+    assert_not segunda.valid?
+    assert_includes segunda.errors[:room_round_id], "has already been taken"
+  end
+
+  test "usuários diferentes podem ter uma jogada cada na mesma room_round" do
+    room_round = criar_room_round
+    GameRound.create!(user: users(:fernanda), country: countries(:atlantis),
+      room_round: room_round, guessed_lat: 5.0, guessed_lng: 5.0, time_seconds: 5)
+
+    de_outro_usuario = GameRound.new(user: users(:visitante), country: countries(:atlantis),
+      room_round: room_round, guessed_lat: 6.0, guessed_lng: 6.0, time_seconds: 5)
+
+    assert de_outro_usuario.valid?
+  end
+
+  test "room_round_id nulo (jogo solo) não é afetado pela unicidade de sala" do
+    GameRound.create!(user: users(:fernanda), country: countries(:atlantis),
+      guessed_lat: 5.0, guessed_lng: 5.0, time_seconds: 5)
+
+    outra_jogada_solo = GameRound.new(user: users(:fernanda), country: countries(:atlantis),
+      guessed_lat: 6.0, guessed_lng: 6.0, time_seconds: 5)
+
+    assert outra_jogada_solo.valid?
+  end
+
+  # A validação Rails é só uma conveniência — o índice único parcial do banco
+  # (index_game_rounds_on_user_and_room_round, WHERE room_round_id IS NOT NULL)
+  # é o backstop real. Testamos isso pulando a validação para provar que o
+  # próprio banco rejeita a segunda linha.
+  test "o índice único parcial do banco rejeita duas jogadas do mesmo usuário na mesma room_round, mesmo pulando validação" do
+    room_round = criar_room_round
+    GameRound.create!(user: users(:fernanda), country: countries(:atlantis),
+      room_round: room_round, guessed_lat: 5.0, guessed_lng: 5.0, time_seconds: 5)
+
+    segunda = GameRound.new(user: users(:fernanda), country: countries(:atlantis), room_round: room_round,
+      guessed_lat: 6.0, guessed_lng: 6.0, distance_km: 0, result: :correct, time_seconds: 5)
+
+    assert_raises(ActiveRecord::RecordNotUnique) do
+      segunda.save(validate: false)
+    end
+  end
+
   private
 
   # Cria uma jogada real (dispara o callback) e recarrega do banco, para que as
@@ -82,5 +136,13 @@ class GameRoundTest < ActiveSupport::TestCase
       guessed_lng: lng,
       time_seconds: 10
     ).reload
+  end
+
+  # Cria uma room_round mínima só para exercitar a unicidade de room_round_id
+  # em GameRound — não precisamos de uma sala "de verdade" (com jogadores,
+  # status in_progress etc.) para esses testes.
+  def criar_room_round
+    room = Room.create!(host: users(:fernanda))
+    RoomRound.create!(room: room, country: countries(:atlantis), round_number: 1, started_at: Time.current)
   end
 end
