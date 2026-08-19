@@ -61,12 +61,17 @@ class RoomsTest < ApplicationSystemTestCase
     using_session(:host) do
       find("#map-container").click
       assert_text "Resultado da rodada 1"
+      # Prova que o novo Stimulus controller (room-result-map) realmente
+      # inicializa num navegador real, sem erro de JS — os testes de
+      # model/controller não conseguem verificar isso.
+      assert_selector "[data-controller='room-result-map']"
     end
 
     # A guest não recarregou — vê o resultado só porque o último chute
     # (do host) disparou finalize! + broadcast_results.
     using_session(:guest) do
       assert_text "Resultado da rodada 1"
+      assert_selector "[data-controller='room-result-map']"
     end
 
     # Só 1 rodada: depois da pausa de revelação, a sala deve avançar

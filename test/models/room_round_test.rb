@@ -1,16 +1,14 @@
 require "test_helper"
 
 # Cobertura de app/models/room_round.rb: all_answered?/time_elapsed?/
-# due_for_finalization? nos seus limites, e finalize! (jogadas sintéticas,
-# pontuação e a regressão do bug #2 — update_all não atualiza o objeto em
-# memória, então finalize! precisa dar reload em si mesmo).
+# due_for_finalization? nos seus limites, finalize! (pontuação e a
+# regressão do bug #2 — update_all não atualiza o objeto em memória, então
+# finalize! precisa dar reload em si mesmo), e unanswered_players.
 #
-# Os valores de distância/pontuação abaixo foram medidos rodando o fluxo
-# real (bin/rails runner) contra a fixture countries(:atlantis):
+# Os valores de distância abaixo foram medidos rodando o fluxo real
+# (bin/rails runner) contra a fixture countries(:atlantis):
 # - um chute em (5.0, 5.0) fica dentro da fronteira → distance_km 0, correct
 # - um chute em (0.0, 14.485) fica a 499km da fronteira → close
-# - o ponto antípoda do centroide de Atlantis (5,5) é (-5, -175), a 19236km
-#   da fronteira → wrong (usado pelas jogadas sintéticas de fill_missing_guesses!)
 class RoomRoundTest < ActiveSupport::TestCase
   test "all_answered? é false até que todos os jogadores tenham uma jogada" do
     round = build_active_round(players: 2)
@@ -88,16 +86,15 @@ class RoomRoundTest < ActiveSupport::TestCase
     assert round.ended_at.present?, "ended_at deveria estar preenchido no objeto que chamou finalize!, sem round.reload"
   end
 
-  test "finalize! preenche uma jogada sintética wrong para quem não respondeu" do
+  test "finalize! não cria jogada para quem não respondeu" do
     round = build_active_round(players: 2)
     respondeu, nao_respondeu = room_players(round)
     responder(round, respondeu)
 
     round.finalize!
 
-    jogada_sintetica = round.game_rounds.find_by!(user_id: nao_respondeu.user_id)
-    assert_equal "wrong", jogada_sintetica.result
-    assert_equal 19236, jogada_sintetica.distance_km
+    assert_nil round.game_rounds.find_by(user_id: nao_respondeu.user_id)
+    assert_equal 1, round.game_rounds.count
   end
 
   test "finalize! não cria jogada extra para quem já respondeu" do
@@ -109,19 +106,31 @@ class RoomRoundTest < ActiveSupport::TestCase
     assert_equal 2, round.game_rounds.count
   end
 
-  test "finalize! premia pontos conforme RESULT_POINTS: correct, close e wrong (sintético)" do
+  test "finalize! premia pontos conforme RESULT_POINTS para quem respondeu" do
     round = build_active_round(players: 3)
     acertou, quase, nao_respondeu = room_players(round)
 
     responder(round, acertou, lat: 5.0, lng: 5.0)     # dentro de Atlantis → correct
     responder(round, quase, lat: 0.0, lng: 14.485)     # 499km da fronteira → close
-    # nao_respondeu não joga — vira "wrong" sintético em finalize!
+    # nao_respondeu não joga — não recebe game_round nenhuma, não pontua
 
     round.finalize!
 
     assert_equal 1000, acertou.reload.score
     assert_equal 500, quase.reload.score
     assert_equal 0, nao_respondeu.reload.score
+    assert_equal 2, round.game_rounds.count
+  end
+
+  test "unanswered_players retorna jogadores sem game_round nesta rodada" do
+    round = build_active_round(players: 2)
+    respondeu, nao_respondeu = room_players(round)
+
+    assert_equal [ respondeu, nao_respondeu ].sort_by(&:id), round.unanswered_players.sort_by(&:id)
+
+    responder(round, respondeu)
+
+    assert_equal [ nao_respondeu ], round.unanswered_players.to_a
   end
 
   private

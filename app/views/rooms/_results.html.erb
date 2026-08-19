@@ -1,4 +1,10 @@
 <%# Resultado da rodada revelado a todos — variáveis: room, room_round %>
+<%# Assim como rooms/_round.html.erb, este partial é renderizado tanto por
+    uma request normal quanto via broadcast_replace_to — sem current_user,
+    sem render de outro partial (bugs #1/#3 do build original das salas). %>
+
+<% answered = room_round.game_rounds.includes(:user).order(:distance_km) %>
+<% unanswered = room_round.unanswered_players.includes(:user) %>
 
 <div class="bg-white rounded-lg shadow-lg p-6">
   <div class="flex items-center justify-between mb-4">
@@ -16,6 +22,18 @@
     Era <span class="font-semibold text-gray-700"><%= room_round.country.name_pt %></span>.
   </p>
 
+  <div id="room-result-map"
+       class="w-full h-64 bg-gray-100 rounded-lg mb-6"
+       data-controller="room-result-map"
+       data-room-result-map-centroid-lat-value="<%= room_round.country.centroid&.dig(:lat) || 0 %>"
+       data-room-result-map-centroid-lng-value="<%= room_round.country.centroid&.dig(:lng) || 0 %>"
+       data-room-result-map-country-name-value="<%= room_round.country.name_pt %>"
+       data-room-result-map-boundary-value="<%= room_round.country.boundary_geojson %>"
+       data-room-result-map-guesses-value="<%= answered.map { |gr|
+         { lat: gr.guessed_lat, lng: gr.guessed_lng, result: gr.result, email: gr.user.email, distance_km: gr.distance_km }
+       }.to_json %>">
+  </div>
+
   <table class="w-full text-sm mb-6">
     <thead>
       <tr class="text-left text-gray-500 border-b">
@@ -25,7 +43,7 @@
       </tr>
     </thead>
     <tbody>
-      <% room_round.game_rounds.includes(:user).order(:distance_km).each do |game_round| %>
+      <% answered.each do |game_round| %>
         <tr class="border-b last:border-0">
           <td class="py-2 text-gray-800"><%= game_round.user.email %></td>
           <td class="py-2">
@@ -34,6 +52,13 @@
             </span>
           </td>
           <td class="py-2 text-right text-gray-600"><%= number_with_delimiter(game_round.distance_km) %> km</td>
+        </tr>
+      <% end %>
+      <% unanswered.each do |room_player| %>
+        <tr class="border-b last:border-0 text-gray-400">
+          <td class="py-2"><%= room_player.user.email %></td>
+          <td class="py-2">Não respondeu</td>
+          <td class="py-2 text-right">—</td>
         </tr>
       <% end %>
     </tbody>

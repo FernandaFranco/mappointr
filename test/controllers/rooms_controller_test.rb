@@ -197,6 +197,37 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
     assert sala.current_room_round.active?
   end
 
+  # Regressão: rooms/_results.html.erb agora lista explicitamente quem não
+  # respondeu (linha cinza, "Não respondeu", travessão no lugar da
+  # distância) e o mapa de resultado só recebe os chutes reais em
+  # data-room-result-map-guesses-value — nunca uma jogada sintética.
+  test "GET /rooms/:id após finalizar mostra Não respondeu para quem não jogou e não vaza chute sintético no mapa" do
+    sala = criar_sala(host: users(:fernanda))
+    nao_respondeu = adicionar_jogadores(sala, 1).first
+    round = RoomRound.create!(room: sala, country: countries(:atlantis), round_number: 1, started_at: Time.current)
+    sala.update!(current_room_round: round, status: :in_progress, current_round_number: 1)
+
+    GameRound.create!(user: users(:fernanda), country: round.country, room_round: round,
+      guessed_lat: 5.0, guessed_lng: 5.0, time_seconds: 5)
+
+    round.finalize!
+    sign_in users(:fernanda)
+
+    get room_path(sala)
+
+    assert_response :success
+    assert_includes response.body, "Não respondeu"
+    assert_includes response.body, nao_respondeu.email
+    assert_includes response.body, "—", "linha de quem não respondeu deveria mostrar um travessão, não um número de distância"
+
+    guesses_json = response.body[/data-room-result-map-guesses-value="([^"]*)"/, 1]
+    assert guesses_json.present?, "esperava encontrar o atributo data-room-result-map-guesses-value na resposta"
+    guesses = JSON.parse(CGI.unescapeHTML(guesses_json))
+
+    assert_equal 1, guesses.length
+    assert_equal users(:fernanda).email, guesses.first["email"]
+  end
+
   # --- advance ---
 
   test "POST /rooms/:id/advance não faz nada quando a rodada ainda não venceu" do
@@ -223,6 +254,30 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
     assert_response :no_content
     assert rodada.reload.finished?
     assert rodada.ended_at.present?
+  end
+
+  # Regressão: finalize! não cria mais GameRound sintética para quem não
+  # respondeu (ver RoomRoundTest). Este teste prova isso no nível HTTP —
+  # GameRound.count deve refletir só as respostas reais, nunca
+  # room_players.count.
+  test "POST /rooms/:id/advance finaliza a rodada com apenas alguns jogadores tendo respondido, sem criar jogadas sintéticas" do
+    sala = iniciar_sala_em_andamento(jogadores: 3)
+    rodada = sala.current_room_round
+    respondeu = rodada.room.room_players.first
+
+    GameRound.create!(user: respondeu.user, country: rodada.country, room_round: rodada,
+      guessed_lat: 5.0, guessed_lng: 5.0, time_seconds: 5)
+
+    assert_no_difference "GameRound.count" do
+      travel_to(rodada.started_at + sala.round_duration_seconds + 1.second) do
+        post advance_room_path(sala)
+      end
+    end
+
+    assert_response :no_content
+    assert rodada.reload.finished?
+    assert_equal 1, rodada.game_rounds.count
+    assert_not_equal sala.room_players.count, rodada.game_rounds.count
   end
 
   test "POST /rooms/:id/advance é idempotente quando chamado duas vezes seguidas" do
