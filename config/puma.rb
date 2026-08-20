@@ -44,7 +44,17 @@ plugin :tmp_restart
 # adapter `async` NÃO seria compartilhado, recriando exatamente o problema
 # que queremos evitar. `solid_queue_mode :async` é o que garante que o
 # supervisor roda como threads dentro do MESMO processo Ruby.
-if ENV.fetch("SOLID_QUEUE_IN_PUMA", "true") == "true"
+#
+# Nunca em test: config.active_job.queue_adapter fica em :test lá (síncrono,
+# não usa as tabelas do Solid Queue de jeito nenhum), então o supervisor não
+# teria nenhum propósito ali — só threads extras de polling competindo pelo
+# pool de conexões durante o boot do Puma que os testes de sistema (Capybara)
+# sobem. Cogitamos que isso explicasse uma falha intermitente de timing no
+# passo de login dos testes de sistema, mas o mesmo flake persistiu depois
+# desse ajuste (e já acontecia em specs sem nenhuma relação com salas) — não
+# é a causa, e o flake em si segue sem investigar. Mantemos o gate assim
+# mesmo, só por remover overhead que genuinamente não serve pra nada em test.
+if ENV.fetch("SOLID_QUEUE_IN_PUMA", "true") == "true" && ENV["RAILS_ENV"] != "test"
   plugin :solid_queue
   solid_queue_mode :async
 end
