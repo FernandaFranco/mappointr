@@ -15,6 +15,17 @@ import { Controller } from "@hotwired/stimulus"
  * mundo sai da sala antes do fim da rodada — os dois chamam a mesma
  * Room#advance!, então rodar junto é seguro (idempotente).
  *
+ * Duas salvaguardas contra pingar pra sempre numa aba abandonada — o fetch
+ * em si sempre "funciona" (é um POST HTTP comum, não depende do WebSocket
+ * do ActionCable), então não dá pra detectar aba morta só pelo sucesso do
+ * ping:
+ * - Pausa o ping enquanto a aba está em segundo plano (Page Visibility API)
+ *   e retoma (com um ping imediato) quando ela volta a ficar visível —
+ *   cobre o caso comum de "saiu da aba".
+ * - Um teto absoluto de tempo desde que o elemento apareceu na tela: depois
+ *   dele, para de pingar de vez, mesmo com a aba visível. Nenhuma rodada
+ *   de verdade precisa de mais que isso, e o RoomSweepJob cobre o resto.
+ *
  * Uso no HTML:
  *   <div data-controller="room-countdown"
  *        data-room-countdown-seconds-left-value="30"
@@ -26,17 +37,22 @@ export default class extends Controller {
   static values = {
     secondsLeft: Number,
     advanceUrl: String,
-    pingIntervalMs: { type: Number, default: 2000 }
+    pingIntervalMs: { type: Number, default: 2000 },
+    maxPingMinutes: { type: Number, default: 30 }
   }
 
   static targets = ["display"]
 
   connect() {
     this.deadline = Date.now() + this.secondsLeftValue * 1000
+    this.pingingSince = Date.now()
     this.updateDisplay()
 
     this.tickTimer = setInterval(() => this.updateDisplay(), 500)
-    this.pingTimer = setInterval(() => this.ping(), this.pingIntervalMsValue)
+    this.startPinging()
+
+    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
+    document.addEventListener("visibilitychange", this.handleVisibilityChange)
 
     // Avisa uma vez de imediato — cobre o caso de a rodada já estar
     // vencida quando este elemento aparece na tela (ex: reconexão tardia).
@@ -45,7 +61,27 @@ export default class extends Controller {
 
   disconnect() {
     clearInterval(this.tickTimer)
+    this.stopPinging()
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
+  }
+
+  handleVisibilityChange() {
+    if (document.hidden) {
+      this.stopPinging()
+    } else {
+      this.startPinging()
+      this.ping()
+    }
+  }
+
+  startPinging() {
+    if (this.pingTimer) return
+    this.pingTimer = setInterval(() => this.ping(), this.pingIntervalMsValue)
+  }
+
+  stopPinging() {
     clearInterval(this.pingTimer)
+    this.pingTimer = null
   }
 
   updateDisplay() {
@@ -56,6 +92,12 @@ export default class extends Controller {
   }
 
   ping() {
+    const elapsedMinutes = (Date.now() - this.pingingSince) / 60000
+    if (elapsedMinutes >= this.maxPingMinutesValue) {
+      this.stopPinging()
+      return
+    }
+
     const csrfToken = document.querySelector("meta[name='csrf-token']").content
 
     fetch(this.advanceUrlValue, {

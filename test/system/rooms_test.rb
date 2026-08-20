@@ -1,4 +1,5 @@
 require "application_system_test_case"
+require "timeout"
 
 # Fluxo multiplayer completo com duas sessões de navegador reais e
 # simultâneas (Capybara::Session#using_session), provando o que os testes
@@ -84,7 +85,98 @@ class RoomsTest < ApplicationSystemTestCase
     end
   end
 
+  # Regressão do bug "ping infinito de aba abandonada": se o WebSocket do
+  # ActionCable morre (aba em segundo plano, laptop dormiu, rede caiu) mas a
+  # aba continua aberta, o Turbo Stream nunca troca o elemento do countdown
+  # e o setInterval de ping ficava rodando pra sempre. room_countdown_controller.js
+  # agora escuta visibilitychange e pausa/retoma o ping conforme a aba fica
+  # oculta/visível. Como o teste não controla de verdade a visibilidade da
+  # aba do Chrome headless, simulamos via Page Visibility API (document.hidden
+  # e document.visibilityState são normalmente somente-leitura — sobrescrever
+  # com Object.defineProperty e disparar o evento sintético é a mesma técnica
+  # usada pra verificar manualmente esse fix antes de escrever o teste).
+  #
+  # A prova de que um ping chegou (ou não) é Room#last_activity_at, que
+  # RoomsController#advance sempre toca via touch_activity!, mesmo quando
+  # Room#advance! não faz nada (rodada ainda não venceu) — não dá pra
+  # observar o ping diretamente, mas o timestamp de atividade é um proxy
+  # fiel: só muda quando uma request POST /rooms/:id/advance chega.
+  test "aba em segundo plano pausa o ping do countdown e retoma com ping imediato ao voltar a ficar visível" do
+    sala = criar_sala_em_andamento_com_rodada_ativa
+
+    sign_in_via_ui(sala.host)
+    visit room_path(sala)
+
+    assert_selector "[data-controller='room-countdown']"
+
+    # O controller pinga uma vez imediatamente em connect() — espera esse
+    # ping assentar antes de medir a pausa, senão ele poderia ser confundido
+    # com um ping "durante" a janela oculta.
+    atividade_apos_connect = esperar_last_activity_mudar(sala, desde: sala.last_activity_at)
+
+    forcar_visibilidade_da_aba(hidden: true)
+
+    # pingIntervalMs é 2000ms — 3s de sono cobre folgadamente uma tentativa
+    # de ping que o bug antigo teria disparado nesta janela.
+    sleep 3
+
+    assert_equal atividade_apos_connect, sala.reload.last_activity_at,
+      "nenhum ping deveria chegar em /advance enquanto document.hidden é true"
+
+    forcar_visibilidade_da_aba(hidden: false)
+
+    atividade_ao_voltar = esperar_last_activity_mudar(sala, desde: atividade_apos_connect)
+    assert_operator atividade_ao_voltar, :>, atividade_apos_connect,
+      "voltar a ficar visível deveria disparar um ping imediato"
+  end
+
+  # Não cobrimos aqui o teto absoluto maxPingMinutes (30min por padrão): um
+  # teste de verdade precisaria esperar 30 minutos reais, e simular isso
+  # exigiria expor data-room-countdown-max-ping-minutes-value com um valor
+  # baixo através de uma alteração em rooms/_round.html.erb só para permitir
+  # o teste — o que distorceria a view de produção por causa de um
+  # comportamento de backstop puro (o próprio código já documenta que
+  # nenhuma rodada de verdade deveria precisar de mais que isso, e quem
+  # cobre o caso real de sala abandonada além disso é o RoomSweepJob, já
+  # testado em test/jobs/room_sweep_job_test.rb). A salvaguarda principal e
+  # reportada pelo usuário — a pausa por visibilidade — é a testada acima.
+
   private
+
+  def forcar_visibilidade_da_aba(hidden:)
+    visibility_state = hidden ? "hidden" : "visible"
+
+    page.execute_script(<<~JS)
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => #{hidden} })
+      Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "#{visibility_state}" })
+      document.dispatchEvent(new Event("visibilitychange"))
+    JS
+  end
+
+  def esperar_last_activity_mudar(sala, desde:, timeout: 6)
+    Timeout.timeout(timeout, RuntimeError, "timeout esperando last_activity_at mudar") do
+      loop do
+        atual = sala.reload.last_activity_at
+        break atual if atual != desde
+        sleep 0.1
+      end
+    end
+  end
+
+  # Sala já em andamento com uma rodada ativa, sem passar pelo fluxo de
+  # start_next_round! (que sorteia o país) — atribui countries(:atlantis)
+  # diretamente para o teste ser determinístico, e usa round_duration_seconds
+  # bem generoso pra rodada não vencer sozinha (o que trocaria #room_body
+  # por rooms/_results antes de terminarmos de medir a pausa do countdown).
+  def criar_sala_em_andamento_com_rodada_ativa
+    sala = Room.create!(host: users(:fernanda), status: :waiting, difficulty: :medium,
+      total_rounds: 3, round_duration_seconds: 600)
+    sala.room_players.create!(user: users(:fernanda))
+
+    round = RoomRound.create!(room: sala, country: countries(:atlantis), round_number: 1, started_at: Time.current)
+    sala.update!(current_room_round: round, status: :in_progress, current_round_number: 1)
+    sala
+  end
 
   def sign_in_via_ui(user)
     visit new_user_session_path
