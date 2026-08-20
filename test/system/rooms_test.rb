@@ -16,6 +16,29 @@ require "timeout"
 # multiplayer em tempo real funciona ponta a ponta — a correção do
 # resultado já está coberta por RoomRoundTest/RoomGuessesControllerTest.
 class RoomsTest < ApplicationSystemTestCase
+  # room_countdown_controller.js (ping a cada 2s) e room_sync_controller.js
+  # (ouvinte de visibilitychange) continuam ativos na página quando o
+  # método de teste termina, já que nenhum destes testes navega pra longe
+  # da sala antes de acabar. Isso expõe uma corrida documentada no próprio
+  # Capybara (Selenium::Driver#reset_browser_state — "asynchronous JS code
+  # in the application under test can navigate the browser away... if the
+  # timing is just right"): um fetch autenticado ainda em voo pode receber
+  # um Set-Cookie de volta DEPOIS que Capybara.reset_sessions! já limpou os
+  # cookies, "ressuscitando" uma sessão logada bem na hora que o próximo
+  # teste reaproveita a mesma janela/cookie jar — daí o
+  # "You are already signed in." intermitente no sign_in_via_ui de um
+  # teste completamente diferente. Navegar pra about:blank aqui (ANTES do
+  # teardown de reset_sessions! da classe-pai, que roda depois já que
+  # teardowns de subclasse rodam primeiro) derruba os controllers Stimulus
+  # da página antiga — e o fetch deles junto — fechando essa janela de corrida.
+  teardown do
+    [ :default, :host, :guest ].each do |session_name|
+      Capybara.using_session(session_name) { visit "about:blank" }
+    rescue StandardError
+      nil
+    end
+  end
+
   test "dois jogadores criam sala, entram, jogam uma rodada e veem o resultado em tempo real" do
     room_code = nil
 
