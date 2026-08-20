@@ -130,6 +130,69 @@ class RoomsTest < ApplicationSystemTestCase
       "voltar a ficar visível deveria disparar um ping imediato"
   end
 
+  # Regressão do bug "jogo trava se um jogador sai do navegador": mesmo com
+  # RoomSweepJob avançando salas travadas no servidor (room_sweep_job_test.rb)
+  # e o countdown pausando/retomando o ping por visibilidade (teste acima),
+  # uma aba que ficou desconectada (segundo plano, rede caiu, laptop dormiu)
+  # bem no momento em que a sala mudou de estado não tem como saber disso:
+  # Turbo Streams via ActionCable é fire-and-forget, sem replay do que perdeu.
+  # room_sync_controller.js cobre esse buraco fazendo um Turbo.visit completo
+  # (GET normal em RoomsController#show, que sempre renderiza o estado certo)
+  # sempre que a aba volta a ficar visível — não só nas views que já têm
+  # room-countdown (round/results), mas na sala inteira, porque a transição
+  # perdida também pode ser PRA DENTRO ou PRA FORA da sala de espera e do
+  # placar final, que não têm countdown nenhum.
+  #
+  # Simulamos "perdeu o broadcast" avançando a sala DIRETO no banco via
+  # update_all — pulando Room#advance!/RoomRound#finalize! (e portanto todo
+  # broadcast_* que eles chamam) de propósito, pra garantir que o teste prova
+  # a sincronização por GET e não por Turbo Stream.
+  test "aba perdida durante uma sala em andamento sincroniza pro placar final ao voltar a ficar visível" do
+    sala = criar_sala_em_andamento_com_rodada_ativa(total_rounds: 1)
+
+    sign_in_via_ui(sala.host)
+    visit room_path(sala)
+
+    assert_text "Rodada 1 de 1"
+    assert_selector "[data-controller='room-sync']"
+
+    avancar_sala_direto_para_finished!(sala)
+
+    # Nenhum broadcast chegou (bypassamos de propósito) — a página deve
+    # continuar mostrando o estado antigo até a aba voltar a ficar visível.
+    assert_text "Rodada 1 de 1"
+
+    forcar_visibilidade_da_aba(hidden: true)
+    forcar_visibilidade_da_aba(hidden: false)
+
+    assert_text "Fim de jogo!"
+  end
+
+  # Mesma ideia do teste acima, mas cobrindo a transição PRA DENTRO do jogo a
+  # partir da sala de espera — a outra ponta sem room-countdown citada no
+  # comentário acima. Sem isso, um jogador que ficou de aba oculta enquanto o
+  # host iniciava o jogo ficaria preso vendo "aguardando início" pra sempre.
+  test "sala de espera perdida sincroniza pra rodada em andamento ao voltar a ficar visível" do
+    sala = Room.create!(host: users(:fernanda), status: :waiting, difficulty: :medium,
+      total_rounds: 1, round_duration_seconds: 600)
+    sala.room_players.create!(user: users(:fernanda))
+
+    sign_in_via_ui(sala.host)
+    visit room_path(sala)
+
+    assert_text "Compartilhe este código com seus amigos"
+
+    avancar_sala_direto_para_rodada_1!(sala)
+
+    # Nenhum broadcast chegou — a sala de espera continua na tela.
+    assert_text "Compartilhe este código com seus amigos"
+
+    forcar_visibilidade_da_aba(hidden: true)
+    forcar_visibilidade_da_aba(hidden: false)
+
+    assert_text "Rodada 1 de 1"
+  end
+
   # Não cobrimos aqui o teto absoluto maxPingMinutes (30min por padrão): um
   # teste de verdade precisaria esperar 30 minutos reais, e simular isso
   # exigiria expor data-room-countdown-max-ping-minutes-value com um valor
@@ -168,14 +231,34 @@ class RoomsTest < ApplicationSystemTestCase
   # diretamente para o teste ser determinístico, e usa round_duration_seconds
   # bem generoso pra rodada não vencer sozinha (o que trocaria #room_body
   # por rooms/_results antes de terminarmos de medir a pausa do countdown).
-  def criar_sala_em_andamento_com_rodada_ativa
+  def criar_sala_em_andamento_com_rodada_ativa(total_rounds: 3)
     sala = Room.create!(host: users(:fernanda), status: :waiting, difficulty: :medium,
-      total_rounds: 3, round_duration_seconds: 600)
+      total_rounds: total_rounds, round_duration_seconds: 600)
     sala.room_players.create!(user: users(:fernanda))
 
     round = RoomRound.create!(room: sala, country: countries(:atlantis), round_number: 1, started_at: Time.current)
     sala.update!(current_room_round: round, status: :in_progress, current_round_number: 1)
     sala
+  end
+
+  # Leva uma sala em andamento direto pro status finished sem passar por
+  # Room#advance!/RoomRound#finalize! — update_all não dispara callbacks nem
+  # os broadcast_* que eles chamam, simulando fielmente "a sala avançou no
+  # servidor mas esta aba nunca recebeu o Turbo Stream".
+  def avancar_sala_direto_para_finished!(sala)
+    RoomRound.where(id: sala.current_room_round_id)
+             .update_all(status: RoomRound.statuses[:finished], ended_at: Time.current)
+    Room.where(id: sala.id).update_all(status: Room.statuses[:finished])
+  end
+
+  # Mesma técnica acima, mas saindo da sala de espera direto pra rodada 1 —
+  # RoomRound.create! não dispara nenhum broadcast por si só (só
+  # Room#start_next_round! faz isso, e não é chamado aqui), então a criação
+  # do registro sozinha já simula "o servidor avançou sem avisar esta aba".
+  def avancar_sala_direto_para_rodada_1!(sala)
+    round = RoomRound.create!(room: sala, country: countries(:atlantis), round_number: 1, started_at: Time.current)
+    Room.where(id: sala.id).update_all(status: Room.statuses[:in_progress],
+      current_round_number: 1, current_room_round_id: round.id)
   end
 
   def sign_in_via_ui(user)

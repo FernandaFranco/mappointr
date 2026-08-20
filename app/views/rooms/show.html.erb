@@ -4,7 +4,7 @@
 
 <%= turbo_stream_from @room %>
 
-<div class="w-full max-w-2xl mx-auto">
+<div class="w-full max-w-2xl mx-auto" data-controller="room-sync">
   <div class="flex items-center justify-between mb-4">
     <h1 class="text-lg font-bold text-gray-900">
       Sala <span class="font-mono tracking-widest"><%= @room.code %></span>
