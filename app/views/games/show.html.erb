@@ -17,7 +17,8 @@
        data-result-map-country-name-value="<%= @country.name_pt %>"
        data-result-map-boundary-value="<%= @country.boundary_geojson %>"
        data-result-map-is-correct-value="<%= @game_round.correct? %>"
-       data-result-map-points-value="<%= @heatmap_points.to_json %>">
+       data-result-map-points-value="<%= @heatmap_points.to_json %>"
+       data-result-map-sample-points-value="<%= @sample_points.to_json %>">
   </div>
   <% if @heatmap_points.present? %>
     <p class="text-sm text-gray-500 -mt-4 mb-6">

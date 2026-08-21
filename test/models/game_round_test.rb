@@ -165,6 +165,54 @@ class GameRoundTest < ActiveSupport::TestCase
     assert_equal 2, ponto_da_celula.last
   end
 
+  # --- sample_points: chutes individuais e anônimos pro mapa de resultado ---
+
+  test "amostra retorna um chute real por célula, não o centro da célula" do
+    criar_jogada(pais: :edenia, lat: 5.1, lng: 25.1)
+    criar_jogada(pais: :edenia, lat: 5.2, lng: 25.3) # mesma célula (5, 25) que o de cima
+
+    pontos = GameRound.sample_points(countries(:edenia).id)
+
+    assert_equal 1, pontos.length
+    ponto = pontos.first
+    assert_not_equal [ 5.0, 25.0 ], [ ponto[:lat], ponto[:lng] ]
+    assert_includes [ [ 5.1, 25.1 ], [ 5.2, 25.3 ] ], [ ponto[:lat], ponto[:lng] ]
+  end
+
+  test "amostra respeita o limite máximo mesmo com mais células distintas que o limite" do
+    criar_jogada(pais: :edenia, lat: 2.0, lng: 22.0)
+    criar_jogada(pais: :edenia, lat: 5.0, lng: 25.0)
+    criar_jogada(pais: :edenia, lat: 8.0, lng: 28.0)
+
+    pontos = GameRound.sample_points(countries(:edenia).id, limit: 2)
+
+    assert_equal 2, pontos.length
+  end
+
+  test "país sem nenhum chute retorna lista vazia na amostra" do
+    pontos = GameRound.sample_points(countries(:edenia).id)
+
+    assert_equal [], pontos
+  end
+
+  test "cada ponto amostrado inclui o resultado do chute" do
+    criar_jogada(pais: :edenia, lat: 5.0, lng: 25.0) # dentro da fronteira de edenia → correct
+
+    pontos = GameRound.sample_points(countries(:edenia).id)
+
+    assert_equal "correct", pontos.first[:result]
+  end
+
+  test "amostra não inclui chutes de outro país" do
+    criar_jogada(pais: :atlantis, lat: 5.0, lng: 5.0)
+    criar_jogada(pais: :edenia, lat: 5.0, lng: 25.0)
+
+    pontos = GameRound.sample_points(countries(:edenia).id)
+
+    assert_equal 1, pontos.length
+    assert_equal 25.0, pontos.first[:lng]
+  end
+
   private
 
   # Cria uma jogada real (dispara o callback) e recarrega do banco, para que as

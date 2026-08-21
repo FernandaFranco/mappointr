@@ -54,6 +54,7 @@ class GamesControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Comparação com outros jogadores"
     assert_includes response.body, "O mapa de calor mostra onde todo mundo já chutou"
     assert_not_includes response.body, 'data-result-map-points-value="[]"'
+    assert_not_includes response.body, 'data-result-map-sample-points-value="[]"'
     assert_not_includes response.body, "Você é o primeiro a jogar este país!"
   end
 
@@ -70,6 +71,7 @@ class GamesControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Você é o primeiro a jogar este país!"
     assert_not_includes response.body, "Comparação com outros jogadores"
     assert_includes response.body, 'data-result-map-points-value="[]"'
+    assert_includes response.body, 'data-result-map-sample-points-value="[]"'
     assert_not_includes response.body, "O mapa de calor mostra onde todo mundo já chutou"
   end
 

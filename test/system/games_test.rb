@@ -25,6 +25,13 @@ class GamesTest < ApplicationSystemTestCase
     assert_text "Comparação com outros jogadores"
     assert_text "O mapa de calor mostra onde todo mundo já chutou"
     assert_selector "canvas.leaflet-heatmap-layer"
+
+    # O polígono da fronteira (L.geoJSON) já é um path.leaflet-interactive
+    # sozinho, então exigir pelo menos 2 prova que as bolinhas da amostra
+    # (L.circleMarker, mesmo seletor no renderer SVG do Leaflet) também
+    # renderizaram — as fixtures acerto/quase/erro dão 3 chutes em 3 células
+    # distintas de atlantis, então GameRound.sample_points tem o que desenhar.
+    assert_selector "path.leaflet-interactive", minimum: 2
   end
 
   # edenia não tem game_rounds nas fixtures: esta é a primeira rodada desse

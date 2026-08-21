@@ -8,6 +8,9 @@ import { Controller } from "@hotwired/stimulus"
  * - Mapa de calor com todo chute já feito nesse país por qualquer jogador
  *   (agregado em grade no servidor, ver GameRound.heatmap_points — sem
  *   identidade nenhuma, só densidade). Vazio quando ninguém mais jogou.
+ * - Amostra de até GameRound::SAMPLE_POINTS_LIMIT chutes individuais reais
+ *   (GameRound.sample_points), coloridos por resultado — correct/close/wrong
+ *   — sem popup e sem identidade nenhuma, só posição + resultado.
  * - Marcador vermelho: onde o jogador chutou
  * - Linha tracejada até o ponto mais próximo da fronteira
  */
@@ -22,7 +25,14 @@ export default class extends Controller {
     countryName: String,
     boundary: String,
     isCorrect: Boolean,
-    points: Array
+    points: Array,
+    samplePoints: Array
+  }
+
+  static COLORS = {
+    correct: "#16a34a",
+    close: "#ca8a04",
+    wrong: "#dc2626"
   }
 
   connect() {
@@ -82,6 +92,7 @@ export default class extends Controller {
     }
 
     this.drawHeatLayer()
+    this.drawSamplePoints()
 
     // Marcador do chute (vermelho)
     const guessIcon = L.divIcon({
@@ -157,5 +168,22 @@ export default class extends Controller {
       maxZoom: 8,
       max: maxWeight
     }).addTo(this.map)
+  }
+
+  // Bolinhas anônimas por cima do mapa de calor: sem popup, sem identidade —
+  // só posição e resultado, coloridas pra dar mais informação do que a
+  // densidade sozinha (onde os acertos se concentram vs. os erros).
+  drawSamplePoints() {
+    this.samplePointsValue.forEach((ponto) => {
+      const color = this.constructor.COLORS[ponto.result] || "#6b7280"
+
+      L.circleMarker([ ponto.lat, ponto.lng ], {
+        radius: 5,
+        color,
+        fillColor: color,
+        fillOpacity: 0.6,
+        weight: 1
+      }).addTo(this.map)
+    })
   }
 }
