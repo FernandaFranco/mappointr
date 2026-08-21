@@ -11,7 +11,9 @@ import { Controller } from "@hotwired/stimulus"
  * - Amostra de até GameRound::SAMPLE_POINTS_LIMIT chutes individuais reais
  *   (GameRound.sample_points), coloridos por resultado — correct/close/wrong
  *   — sem popup e sem identidade nenhuma, só posição + resultado.
- * - Marcador vermelho: onde o jogador chutou
+ * - Marcador do chute do jogador, colorido e com o mesmo emoji do resultado
+ *   (🎯 correct / 👏 close / 😅 wrong) — mesma paleta e mesma linguagem visual
+ *   da mensagem principal da página, não mais um "?" fixo genérico.
  * - Linha tracejada até o ponto mais próximo da fronteira
  */
 export default class extends Controller {
@@ -25,6 +27,7 @@ export default class extends Controller {
     countryName: String,
     boundary: String,
     isCorrect: Boolean,
+    result: String,
     points: Array,
     samplePoints: Array
   }
@@ -33,6 +36,12 @@ export default class extends Controller {
     correct: "#16a34a",
     close: "#ca8a04",
     wrong: "#dc2626"
+  }
+
+  static EMOJIS = {
+    correct: "🎯",
+    close: "👏",
+    wrong: "😅"
   }
 
   connect() {
@@ -94,25 +103,27 @@ export default class extends Controller {
     this.drawHeatLayer()
     this.drawSamplePoints()
 
-    // Marcador do chute (vermelho)
+    // Marcador do chute, colorido e com o emoji do resultado — já sabemos o
+    // resultado nesta página, um "?" genérico não faz mais sentido aqui.
+    const guessColor = this.constructor.COLORS[this.resultValue] || "#dc2626"
+    const guessEmoji = this.constructor.EMOJIS[this.resultValue] || ""
+
     const guessIcon = L.divIcon({
       className: "guess-marker",
       html: `<div style="
-        width: 24px;
-        height: 24px;
-        background-color: #dc2626;
+        width: 28px;
+        height: 28px;
+        background-color: ${guessColor};
         border: 3px solid white;
         border-radius: 50%;
         box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: white;
-        font-size: 12px;
-        font-weight: bold;
-      ">?</div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12]
+        font-size: 14px;
+      ">${guessEmoji}</div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
     })
 
     L.marker(guessCoords, { icon: guessIcon })
