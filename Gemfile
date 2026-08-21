@@ -63,7 +63,7 @@ group :test do
   # chamando run/3) está corrigido, mas o Minitest 6 separou minitest/mock
   # do core (room_test.rb faz `require "minitest/mock"` e quebra sem essa
   # pin). Mantém em 5.x até migrar os mocks pra gem separada.
-  gem "minitest", "~> 5.25"
+  gem "minitest", "~> 6.0"
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"
   gem "selenium-webdriver"
