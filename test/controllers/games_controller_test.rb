@@ -32,4 +32,49 @@ class GamesControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Nenhum país disponível para jogar no momento."
     assert_nil session[:current_country_id]
   end
+
+  # --- GET /play/:id (#show) ---
+
+  test "GET /play/:id sem login redireciona para o sign in" do
+    get game_path(game_rounds(:acerto))
+
+    assert_redirected_to new_user_session_path
+  end
+
+  # A fixture atlantis já tem 3 game_rounds (acerto, quase, erro), então
+  # total_attempts > 1 — mostra comparação com outros jogadores e o mapa de calor.
+  test "GET /play/:id com outros jogadores no mesmo país mostra comparação e mapa de calor" do
+    sign_in users(:fernanda)
+
+    get game_path(game_rounds(:acerto))
+
+    assert_response :success
+    assert_includes response.body, "Comparação com outros jogadores"
+    assert_includes response.body, "Mapa de calor"
+    assert_includes response.body, 'data-controller="country-heatmap"'
+    assert_not_includes response.body, "Você é o primeiro a jogar este país!"
+  end
+
+  # edenia não tem nenhum game_round nas fixtures: a rodada criada abaixo é a
+  # primeira. total_attempts == 1 → sem comparação, sem mapa de calor.
+  test "GET /play/:id sendo o primeiro a jogar o país não mostra comparação nem mapa de calor" do
+    sign_in users(:fernanda)
+    primeira_rodada = GameRound.create!(user: users(:fernanda), country: countries(:edenia),
+      guessed_lat: 25.0, guessed_lng: 5.0, time_seconds: 10)
+
+    get game_path(primeira_rodada)
+
+    assert_response :success
+    assert_includes response.body, "Você é o primeiro a jogar este país!"
+    assert_not_includes response.body, "Comparação com outros jogadores"
+    assert_not_includes response.body, 'data-controller="country-heatmap"'
+  end
+
+  test "GET /play/:id de uma rodada de outro usuário retorna 404" do
+    sign_in users(:visitante)
+
+    get game_path(game_rounds(:acerto)) # pertence a fernanda
+
+    assert_response :not_found
+  end
 end

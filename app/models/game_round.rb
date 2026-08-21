@@ -30,6 +30,24 @@ class GameRound < ApplicationRecord
   scope :close_guesses, -> { where(result: :close) }
   scope :successful_guesses, -> { where(result: [ :correct, :close ]) }
 
+  # Tamanho da célula do grid do mapa de calor, em graus (~111km no equador).
+  # Agrupa todos os chutes já feitos num país numa grade fixa antes de mandar
+  # pro navegador — isso limita a resposta a no máximo (360/cell) * (180/cell)
+  # pontos, não importa quantos milhares de GameRound existam pra esse país.
+  HEATMAP_CELL_SIZE = 1.0
+
+  # Agrega todo chute já feito num país numa grade, retornando [lat, lng, peso]
+  # pra alimentar o Leaflet.heat. cell_size nunca vem de input do usuário, então
+  # a interpolação de string no Arel.sql abaixo é segura (não é o mesmo padrão
+  # de risco das consultas PostGIS cruas em Country).
+  def self.heatmap_points(country_id, cell_size: HEATMAP_CELL_SIZE)
+    for_country(country_id)
+      .group(Arel.sql("ROUND(guessed_lat / #{cell_size}) * #{cell_size}"))
+      .group(Arel.sql("ROUND(guessed_lng / #{cell_size}) * #{cell_size}"))
+      .count
+      .map { |(lat, lng), weight| [ lat.to_f, lng.to_f, weight ] }
+  end
+
   # Mensagem de feedback em português
   def result_message
     case result

@@ -124,14 +124,55 @@ class GameRoundTest < ActiveSupport::TestCase
     end
   end
 
+  # --- heatmap_points: agregação em grade pro mapa de calor ---
+
+  test "chutes na mesma célula da grade colapsam num único ponto com peso somado" do
+    # edenia não tem chutes nas fixtures, então o peso final é só desses dois
+    criar_jogada(pais: :edenia, lat: 25.0, lng: 25.0)
+    criar_jogada(pais: :edenia, lat: 25.3, lng: 25.4) # mesma célula (25, 25) com cell_size 1.0
+
+    pontos = GameRound.heatmap_points(countries(:edenia).id)
+
+    ponto_da_celula = pontos.find { |lat, lng, _peso| lat == 25.0 && lng == 25.0 }
+    assert_not_nil ponto_da_celula
+    assert_equal 2, ponto_da_celula.last
+  end
+
+  test "chutes em células diferentes da grade permanecem como pontos separados" do
+    criar_jogada(lat: 5.0, lng: 5.0)
+    criar_jogada(lat: 8.0, lng: 8.0)
+
+    pontos = GameRound.heatmap_points(countries(:atlantis).id)
+
+    assert_includes pontos.map { |lat, lng, _peso| [ lat, lng ] }, [ 5.0, 5.0 ]
+    assert_includes pontos.map { |lat, lng, _peso| [ lat, lng ] }, [ 8.0, 8.0 ]
+  end
+
+  test "país sem nenhum chute retorna lista vazia" do
+    pontos = GameRound.heatmap_points(countries(:edenia).id)
+
+    assert_equal [], pontos
+  end
+
+  test "cell_size customizado agrupa em células mais grosseiras" do
+    criar_jogada(pais: :edenia, lat: 25.0, lng: 25.0)
+    criar_jogada(pais: :edenia, lat: 27.0, lng: 27.0)
+
+    pontos = GameRound.heatmap_points(countries(:edenia).id, cell_size: 5.0)
+    ponto_da_celula = pontos.find { |lat, lng, _peso| lat == 25.0 && lng == 25.0 }
+
+    assert_not_nil ponto_da_celula
+    assert_equal 2, ponto_da_celula.last
+  end
+
   private
 
   # Cria uma jogada real (dispara o callback) e recarrega do banco, para que as
   # asserções sejam sobre o que ficou persistido.
-  def criar_jogada(lat:, lng:)
+  def criar_jogada(lat:, lng:, pais: :atlantis)
     GameRound.create!(
       user: users(:fernanda),
-      country: countries(:atlantis),
+      country: countries(pais),
       guessed_lat: lat,
       guessed_lng: lng,
       time_seconds: 10

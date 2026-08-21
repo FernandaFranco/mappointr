@@ -66,6 +66,11 @@ class GamesController < ApplicationController
 
     # Estatísticas comparativas com outros jogadores
     @stats = calculate_stats(@game_round)
+
+    # Mapa de calor com todo chute já feito neste país (anônimo, agregado em
+    # grade — ver GameRound.heatmap_points). Só faz sentido mostrar junto com
+    # a comparação: sem outros chutes, seria só o próprio ponto do jogador.
+    @heatmap_points = @stats[:total_attempts] > 1 ? GameRound.heatmap_points(@country.id) : []
   end
 
   private

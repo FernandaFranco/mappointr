@@ -1,0 +1,21 @@
+<%# Mapa de calor com todo chute já feito neste país, agregado e anônimo %>
+<%# Variáveis: @country, @game_round, @heatmap_points (via GamesController#show) %>
+
+<div class="border-t pt-6 mt-6">
+  <h2 class="text-lg font-semibold text-gray-800 mb-1">Mapa de calor</h2>
+  <p class="text-sm text-gray-500 mb-4">
+    Onde todo mundo já chutou pra <%= @country.name_pt %>. Seu chute está marcado em vermelho.
+  </p>
+
+  <% centroid = @country.centroid %>
+  <div id="country-heatmap-container"
+       class="w-full h-64 bg-gray-200 rounded-lg"
+       data-controller="country-heatmap"
+       data-country-heatmap-centroid-lat-value="<%= centroid&.dig(:lat) || 0 %>"
+       data-country-heatmap-centroid-lng-value="<%= centroid&.dig(:lng) || 0 %>"
+       data-country-heatmap-boundary-value="<%= @country.boundary_geojson %>"
+       data-country-heatmap-points-value="<%= @heatmap_points.to_json %>"
+       data-country-heatmap-guessed-lat-value="<%= @game_round.guessed_lat %>"
+       data-country-heatmap-guessed-lng-value="<%= @game_round.guessed_lng %>">
+  </div>
+</div>
