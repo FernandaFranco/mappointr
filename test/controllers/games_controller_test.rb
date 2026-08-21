@@ -42,7 +42,9 @@ class GamesControllerTest < ActionDispatch::IntegrationTest
   end
 
   # A fixture atlantis já tem 3 game_rounds (acerto, quase, erro), então
-  # total_attempts > 1 — mostra comparação com outros jogadores e o mapa de calor.
+  # total_attempts > 1 — mostra comparação com outros jogadores e o mapa de
+  # calor fica embutido no mapa de resultado (mesmo data-controller="result-map"),
+  # com data-result-map-points-value preenchido.
   test "GET /play/:id com outros jogadores no mesmo país mostra comparação e mapa de calor" do
     sign_in users(:fernanda)
 
@@ -50,8 +52,8 @@ class GamesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "Comparação com outros jogadores"
-    assert_includes response.body, "Mapa de calor"
-    assert_includes response.body, 'data-controller="country-heatmap"'
+    assert_includes response.body, "O mapa de calor mostra onde todo mundo já chutou"
+    assert_not_includes response.body, 'data-result-map-points-value="[]"'
     assert_not_includes response.body, "Você é o primeiro a jogar este país!"
   end
 
@@ -67,7 +69,8 @@ class GamesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "Você é o primeiro a jogar este país!"
     assert_not_includes response.body, "Comparação com outros jogadores"
-    assert_not_includes response.body, 'data-controller="country-heatmap"'
+    assert_includes response.body, 'data-result-map-points-value="[]"'
+    assert_not_includes response.body, "O mapa de calor mostra onde todo mundo já chutou"
   end
 
   test "GET /play/:id de uma rodada de outro usuário retorna 404" do

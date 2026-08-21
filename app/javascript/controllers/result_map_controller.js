@@ -5,6 +5,9 @@ import { Controller } from "@hotwired/stimulus"
  *
  * Exibe:
  * - Polígono do país destacado em verde
+ * - Mapa de calor com todo chute já feito nesse país por qualquer jogador
+ *   (agregado em grade no servidor, ver GameRound.heatmap_points — sem
+ *   identidade nenhuma, só densidade). Vazio quando ninguém mais jogou.
  * - Marcador vermelho: onde o jogador chutou
  * - Linha tracejada até o ponto mais próximo da fronteira
  */
@@ -18,7 +21,8 @@ export default class extends Controller {
     nearestLng: Number,
     countryName: String,
     boundary: String,
-    isCorrect: Boolean
+    isCorrect: Boolean,
+    points: Array
   }
 
   connect() {
@@ -77,6 +81,8 @@ export default class extends Controller {
       }
     }
 
+    this.drawHeatLayer()
+
     // Marcador do chute (vermelho)
     const guessIcon = L.divIcon({
       className: "guess-marker",
@@ -133,5 +139,23 @@ export default class extends Controller {
     }
 
     console.log("Mapa de resultado inicializado")
+  }
+
+  drawHeatLayer() {
+    if (typeof L.heatLayer === "undefined") {
+      console.error("Leaflet.heat não carregado!")
+      return
+    }
+
+    if (this.pointsValue.length === 0) return
+
+    const maxWeight = Math.max(...this.pointsValue.map((ponto) => ponto[2]))
+
+    L.heatLayer(this.pointsValue, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 8,
+      max: maxWeight
+    }).addTo(this.map)
   }
 }

@@ -15,15 +15,15 @@ class GamesTest < ApplicationSystemTestCase
 
   # atlantis já tem 3 game_rounds nas fixtures (acerto, quase, erro), então
   # a rodada de fernanda (acerto) tem outros jogadores pra comparar — mostra
-  # o card de comparação e o mapa de calor com o canvas real do Leaflet.heat.
+  # o card de comparação e o mapa de calor embutido no mapa de resultado,
+  # com o canvas real do Leaflet.heat.
   test "resultado com outros jogadores no país mostra comparação e mapa de calor" do
     sign_in_via_ui(users(:fernanda))
 
     visit game_path(game_rounds(:acerto))
 
     assert_text "Comparação com outros jogadores"
-    assert_text "Mapa de calor"
-    assert_selector "[data-controller='country-heatmap']"
+    assert_text "O mapa de calor mostra onde todo mundo já chutou"
     assert_selector "canvas.leaflet-heatmap-layer"
   end
 
@@ -38,7 +38,7 @@ class GamesTest < ApplicationSystemTestCase
 
     assert_text "Você é o primeiro a jogar este país!"
     assert_no_text "Comparação com outros jogadores"
-    assert_no_selector "[data-controller='country-heatmap']"
+    assert_no_selector "canvas.leaflet-heatmap-layer"
   end
 
   private
