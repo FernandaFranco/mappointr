@@ -1,13 +1,18 @@
 # This configuration file will be evaluated by Puma. The top-level methods that
 # are invoked here are part of Puma's configuration DSL. For more information
 # about methods provided by the DSL, see https://puma.io/puma/Puma/DSL.html.
-
+#
 # Puma starts a configurable number of processes (workers) and each process
 # serves each request in a thread from an internal thread pool.
 #
+# You can control the number of workers using ENV["WEB_CONCURRENCY"]. You
+# should only set this value when you want to run 2 or more workers. The
+# default is already 1. You can set it to `auto` to automatically start a worker
+# for each available processor.
+#
 # The ideal number of threads per worker depends both on how much time the
 # application spends waiting for IO operations and on how much you wish to
-# to prioritize throughput over latency.
+# prioritize throughput over latency.
 #
 # As a rule of thumb, increasing the number of threads will increase how much
 # traffic a given process can handle (throughput), but due to CRuby's
@@ -54,6 +59,12 @@ plugin :tmp_restart
 # desse ajuste (e já acontecia em specs sem nenhuma relação com salas) — não
 # é a causa, e o flake em si segue sem investigar. Mantemos o gate assim
 # mesmo, só por remover overhead que genuinamente não serve pra nada em test.
+#
+# Re-verificado no upgrade pro Rails 8.1: o gerador do app:update sobrescreve
+# esse arquivo com o bloco padrão (`plugin :solid_queue if
+# ENV["SOLID_QUEUE_IN_PUMA"]`, sem `solid_queue_mode :async` e sem o gate de
+# test) — a lógica abaixo foi restaurada manualmente de propósito. O motivo
+# de existir é o adapter `async` do ActionCable, que não mudou neste upgrade.
 if ENV.fetch("SOLID_QUEUE_IN_PUMA", "true") == "true" && ENV["RAILS_ENV"] != "test"
   plugin :solid_queue
   solid_queue_mode :async
