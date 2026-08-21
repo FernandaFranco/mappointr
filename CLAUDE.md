@@ -5,7 +5,7 @@ e o app usa PostGIS para medir o quão perto o chute ficou da fronteira real.
 
 ## Stack
 
-- Ruby 3.4.3, Rails 7.2.3 (não é Rails 8 — cuidado ao seguir guias novos)
+- Ruby 3.4.3, Rails 8.1.3.1 (`config.load_defaults 8.1`)
 - PostgreSQL + PostGIS via `activerecord-postgis-adapter` (adapter: `postgis`)
 - Devise para autenticação
 - Hotwire (Turbo + Stimulus) com importmap — **sem build de JS, sem node_modules**
@@ -62,9 +62,11 @@ calcula o tempo. `#show` exibe o resultado com estatísticas comparativas.
 
 ## Armadilhas conhecidas
 
-- **Minitest está pinado em `~> 5.25`** no Gemfile. Rails 7.2 quebra com Minitest 6
-  (`line_filtering.rb` chama `run/3`) e a suíte morre antes de rodar qualquer teste,
-  reportando "0 tests" como se estivesse tudo bem. Não solte esse pin sem subir o Rails.
+- **Minitest está pinado em `~> 5.25`** no Gemfile. Não é mais o bug antigo do Rails 7.2
+  (`line_filtering.rb`/`run/3`, corrigido no upstream) — o Minitest 6 separou
+  `minitest/mock` do core, e `test/models/room_test.rb` faz `require "minitest/mock"`
+  direto. Soltar o pin quebra esse require. Pra soltar de vez, teria que migrar esse
+  require pra uma gem de mock separada primeiro.
 - Fixtures de `countries` precisam de `boundary` em EWKT
   (`"SRID=4326;MULTIPOLYGON(((...)))"`), senão as consultas PostGIS retornam nil.
   Fixtures não disparam callbacks, então `distance_km`/`result` de `game_rounds`
@@ -75,4 +77,6 @@ calcula o tempo. `#show` exibe o resultado com estatísticas comparativas.
   novo com `.round` (não `.to_i`) — usar `.to_i` truncava chutes a menos de 1km
   **fora** da fronteira para distância 0, premiando como `correct`. Já corrigido;
   não reintroduza o truncamento.
-- O diretório `test/system/` está vazio, mas o CI roda `test:system`.
+- `test/system/` cobre salas multiplayer (`rooms_test.rb`) e a página de estatísticas
+  (`stats_test.rb`), mas não tem cobertura de sistema pro fluxo solo de jogo
+  (`games#new` → clique no mapa → `games#create`) — só teste de controller.

@@ -1,13 +1,13 @@
 source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 7.2.3"
+gem "rails", "~> 8.1"
 # The original asset pipeline for Rails [https://github.com/rails/sprockets-rails]
 gem "sprockets-rails"
 # Use postgresql as the database for Active Record
 gem "pg", "~> 1.1"
 # PostGIS adapter for geographic data
-gem "activerecord-postgis-adapter", "~> 10.0"
+gem "activerecord-postgis-adapter", "~> 11.1"
 # Authentication
 gem "devise", "~> 4.9"
 # Use the Puma web server [https://github.com/puma/puma]
@@ -59,8 +59,10 @@ group :development do
 end
 
 group :test do
-  # Rails 7.2's test runner is incompatible with Minitest 6 (line_filtering.rb
-  # calls run/3), so pin to the 5.x line until we upgrade Rails
+  # Reavaliado no upgrade pro Rails 8.1: o bug antigo (line_filtering.rb
+  # chamando run/3) está corrigido, mas o Minitest 6 separou minitest/mock
+  # do core (room_test.rb faz `require "minitest/mock"` e quebra sem essa
+  # pin). Mantém em 5.x até migrar os mocks pra gem separada.
   gem "minitest", "~> 5.25"
   # Use system testing [https://guides.rubyonrails.org/testing.html#system-testing]
   gem "capybara"

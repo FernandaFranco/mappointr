@@ -10,6 +10,11 @@ require "test_helper"
 # histórico de bugs #1/#3 documentado em rooms_controller_test.rb e
 # room_guesses_controller_test.rb).
 class RoomSweepJobTest < ActiveSupport::TestCase
+  # turbo-rails só inclui esse helper automaticamente depois que ActionCable::Base
+  # carrega (via ActiveSupport.on_load(:action_cable)) — sob Rails 8 esse load hook
+  # nem sempre disparou a tempo do corpo desta classe ser avaliado, deixando a
+  # constante indefinida. Require explícito remove a dependência dessa ordem.
+  require "turbo/broadcastable/test_helper"
   include Turbo::Broadcastable::TestHelper
 
   test "sweep finaliza a rodada de uma sala cujo tempo esgotou" do
