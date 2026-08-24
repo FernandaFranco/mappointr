@@ -124,90 +124,37 @@ class GameRoundTest < ActiveSupport::TestCase
     end
   end
 
-  # --- heatmap_points: agregação em grade pro mapa de calor ---
+  # --- guess_points: todo chute já feito num país, anônimo, pro mapa de resultado ---
 
-  test "chutes na mesma célula da grade colapsam num único ponto com peso somado" do
-    # edenia não tem chutes nas fixtures, então o peso final é só desses dois
-    criar_jogada(pais: :edenia, lat: 25.0, lng: 25.0)
-    criar_jogada(pais: :edenia, lat: 25.3, lng: 25.4) # mesma célula (25, 25) com cell_size 1.0
-
-    pontos = GameRound.heatmap_points(countries(:edenia).id)
-
-    ponto_da_celula = pontos.find { |lat, lng, _peso| lat == 25.0 && lng == 25.0 }
-    assert_not_nil ponto_da_celula
-    assert_equal 2, ponto_da_celula.last
-  end
-
-  test "chutes em células diferentes da grade permanecem como pontos separados" do
-    criar_jogada(lat: 5.0, lng: 5.0)
-    criar_jogada(lat: 8.0, lng: 8.0)
-
-    pontos = GameRound.heatmap_points(countries(:atlantis).id)
-
-    assert_includes pontos.map { |lat, lng, _peso| [ lat, lng ] }, [ 5.0, 5.0 ]
-    assert_includes pontos.map { |lat, lng, _peso| [ lat, lng ] }, [ 8.0, 8.0 ]
-  end
-
-  test "país sem nenhum chute retorna lista vazia" do
-    pontos = GameRound.heatmap_points(countries(:edenia).id)
-
-    assert_equal [], pontos
-  end
-
-  test "cell_size customizado agrupa em células mais grosseiras" do
-    criar_jogada(pais: :edenia, lat: 25.0, lng: 25.0)
-    criar_jogada(pais: :edenia, lat: 27.0, lng: 27.0)
-
-    pontos = GameRound.heatmap_points(countries(:edenia).id, cell_size: 5.0)
-    ponto_da_celula = pontos.find { |lat, lng, _peso| lat == 25.0 && lng == 25.0 }
-
-    assert_not_nil ponto_da_celula
-    assert_equal 2, ponto_da_celula.last
-  end
-
-  # --- sample_points: chutes individuais e anônimos pro mapa de resultado ---
-
-  test "amostra retorna um chute real por célula, não o centro da célula" do
+  test "guess_points retorna um ponto por chute, sem agrupar nem limitar" do
     criar_jogada(pais: :edenia, lat: 5.1, lng: 25.1)
-    criar_jogada(pais: :edenia, lat: 5.2, lng: 25.3) # mesma célula (5, 25) que o de cima
+    criar_jogada(pais: :edenia, lat: 5.1, lng: 25.1) # mesma coordenada exata, de novo — não colapsa
 
-    pontos = GameRound.sample_points(countries(:edenia).id)
-
-    assert_equal 1, pontos.length
-    ponto = pontos.first
-    assert_not_equal [ 5.0, 25.0 ], [ ponto[:lat], ponto[:lng] ]
-    assert_includes [ [ 5.1, 25.1 ], [ 5.2, 25.3 ] ], [ ponto[:lat], ponto[:lng] ]
-  end
-
-  test "amostra respeita o limite máximo mesmo com mais células distintas que o limite" do
-    criar_jogada(pais: :edenia, lat: 2.0, lng: 22.0)
-    criar_jogada(pais: :edenia, lat: 5.0, lng: 25.0)
-    criar_jogada(pais: :edenia, lat: 8.0, lng: 28.0)
-
-    pontos = GameRound.sample_points(countries(:edenia).id, limit: 2)
+    pontos = GameRound.guess_points(countries(:edenia).id)
 
     assert_equal 2, pontos.length
+    assert_equal({ lat: 5.1, lng: 25.1 }, pontos.first)
   end
 
-  test "país sem nenhum chute retorna lista vazia na amostra" do
-    pontos = GameRound.sample_points(countries(:edenia).id)
+  test "guess_points não inclui resultado nem identidade, só posição" do
+    criar_jogada(pais: :edenia, lat: 5.0, lng: 25.0)
+
+    ponto = GameRound.guess_points(countries(:edenia).id).first
+
+    assert_equal [ :lat, :lng ], ponto.keys
+  end
+
+  test "país sem nenhum chute retorna lista vazia em guess_points" do
+    pontos = GameRound.guess_points(countries(:edenia).id)
 
     assert_equal [], pontos
   end
 
-  test "cada ponto amostrado inclui o resultado do chute" do
-    criar_jogada(pais: :edenia, lat: 5.0, lng: 25.0) # dentro da fronteira de edenia → correct
-
-    pontos = GameRound.sample_points(countries(:edenia).id)
-
-    assert_equal "correct", pontos.first[:result]
-  end
-
-  test "amostra não inclui chutes de outro país" do
+  test "guess_points não inclui chutes de outro país" do
     criar_jogada(pais: :atlantis, lat: 5.0, lng: 5.0)
     criar_jogada(pais: :edenia, lat: 5.0, lng: 25.0)
 
-    pontos = GameRound.sample_points(countries(:edenia).id)
+    pontos = GameRound.guess_points(countries(:edenia).id)
 
     assert_equal 1, pontos.length
     assert_equal 25.0, pontos.first[:lng]

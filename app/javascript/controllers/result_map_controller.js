@@ -6,12 +6,10 @@ import { whenLeafletReady } from "leaflet_ready"
  *
  * Exibe:
  * - Polígono do país destacado em verde
- * - Mapa de calor com todo chute já feito nesse país por qualquer jogador
- *   (agregado em grade no servidor, ver GameRound.heatmap_points — sem
- *   identidade nenhuma, só densidade). Vazio quando ninguém mais jogou.
- * - Amostra de até GameRound::SAMPLE_POINTS_LIMIT chutes individuais reais
- *   (GameRound.sample_points), coloridos por resultado — correct/close/wrong
- *   — sem popup e sem identidade nenhuma, só posição + resultado.
+ * - Um ponto cinza por chute já feito nesse país por qualquer jogador (ver
+ *   GameRound.guess_points) — sem identidade, sem cor por resultado, um
+ *   dispersão de pontos simples, cada chute um ponto, sem agregação
+ *   nenhuma. Vazio quando ninguém mais jogou.
  * - Marcador do chute do jogador, colorido e com o mesmo emoji do resultado
  *   (🎯 correct / 👏 close / 😅 wrong) — mesma paleta e mesma linguagem visual
  *   da mensagem principal da página, não mais um "?" fixo genérico.
@@ -29,9 +27,10 @@ export default class extends Controller {
     boundary: String,
     isCorrect: Boolean,
     result: String,
-    points: Array,
-    samplePoints: Array
+    guessPoints: Array
   }
+
+  static GUESS_POINT_COLOR = "#6b7280"
 
   static COLORS = {
     correct: "#16a34a",
@@ -98,8 +97,7 @@ export default class extends Controller {
       }
     }
 
-    this.drawHeatLayer()
-    this.drawSamplePoints()
+    this.drawGuessPoints()
 
     // Marcador do chute, colorido e com o emoji do resultado — já sabemos o
     // resultado nesta página, um "?" genérico não faz mais sentido aqui.
@@ -161,36 +159,15 @@ export default class extends Controller {
     console.log("Mapa de resultado inicializado")
   }
 
-  drawHeatLayer() {
-    if (typeof L.heatLayer === "undefined") {
-      console.error("Leaflet.heat não carregado!")
-      return
-    }
-
-    if (this.pointsValue.length === 0) return
-
-    const maxWeight = Math.max(...this.pointsValue.map((ponto) => ponto[2]))
-
-    L.heatLayer(this.pointsValue, {
-      radius: 25,
-      blur: 15,
-      maxZoom: 8,
-      max: maxWeight
-    }).addTo(this.map)
-  }
-
-  // Bolinhas anônimas por cima do mapa de calor: sem popup, sem identidade —
-  // só posição e resultado, coloridas pra dar mais informação do que a
-  // densidade sozinha (onde os acertos se concentram vs. os erros).
-  drawSamplePoints() {
-    this.samplePointsValue.forEach((ponto) => {
-      const color = this.constructor.COLORS[ponto.result] || "#6b7280"
-
+  // Um ponto cinza por chute já feito no país, sem popup e sem identidade —
+  // só posição. Sem agregação, sem limite: cada chute vira um ponto de verdade.
+  drawGuessPoints() {
+    this.guessPointsValue.forEach((ponto) => {
       L.circleMarker([ ponto.lat, ponto.lng ], {
-        radius: 5,
-        color,
-        fillColor: color,
-        fillOpacity: 0.6,
+        radius: 4,
+        color: this.constructor.GUESS_POINT_COLOR,
+        fillColor: this.constructor.GUESS_POINT_COLOR,
+        fillOpacity: 0.5,
         weight: 1
       }).addTo(this.map)
     })

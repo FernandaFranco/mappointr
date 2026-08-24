@@ -18,12 +18,11 @@
        data-result-map-boundary-value="<%= @country.boundary_geojson %>"
        data-result-map-is-correct-value="<%= @game_round.correct? %>"
        data-result-map-result-value="<%= @game_round.result %>"
-       data-result-map-points-value="<%= @heatmap_points.to_json %>"
-       data-result-map-sample-points-value="<%= @sample_points.to_json %>">
+       data-result-map-guess-points-value="<%= @guess_points.to_json %>">
   </div>
-  <% if @heatmap_points.present? %>
+  <% if @guess_points.present? %>
     <p class="text-sm text-gray-500 -mt-4 mb-6">
-      O mapa de calor mostra onde todo mundo já chutou pra <%= @country.name_pt %>.
+      Cada ponto no mapa é um chute já feito por outro jogador pra <%= @country.name_pt %>.
     </p>
   <% end %>
 

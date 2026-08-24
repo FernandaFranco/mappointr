@@ -15,28 +15,26 @@ class GamesTest < ApplicationSystemTestCase
 
   # atlantis já tem 3 game_rounds nas fixtures (acerto, quase, erro), então
   # a rodada de fernanda (acerto) tem outros jogadores pra comparar — mostra
-  # o card de comparação e o mapa de calor embutido no mapa de resultado,
-  # com o canvas real do Leaflet.heat.
-  test "resultado com outros jogadores no país mostra comparação e mapa de calor" do
+  # o card de comparação e um ponto no mapa por chute já feito no país.
+  test "resultado com outros jogadores no país mostra comparação e os pontos de todo mundo" do
     sign_in_via_ui(users(:fernanda))
 
     visit game_path(game_rounds(:acerto))
 
     assert_text "Comparação com outros jogadores"
-    assert_text "O mapa de calor mostra onde todo mundo já chutou"
-    assert_selector "canvas.leaflet-heatmap-layer"
+    assert_text "Cada ponto no mapa é um chute já feito por outro jogador"
 
     # O polígono da fronteira (L.geoJSON) já é um path.leaflet-interactive
-    # sozinho, então exigir pelo menos 2 prova que as bolinhas da amostra
-    # (L.circleMarker, mesmo seletor no renderer SVG do Leaflet) também
-    # renderizaram — as fixtures acerto/quase/erro dão 3 chutes em 3 células
-    # distintas de atlantis, então GameRound.sample_points tem o que desenhar.
+    # sozinho, então exigir pelo menos 2 prova que os pontos (L.circleMarker,
+    # mesmo seletor no renderer SVG do Leaflet) também renderizaram — as
+    # fixtures acerto/quase/erro dão 3 chutes em atlantis, então
+    # GameRound.guess_points tem o que desenhar.
     assert_selector "path.leaflet-interactive", minimum: 2
   end
 
   # edenia não tem game_rounds nas fixtures: esta é a primeira rodada desse
-  # país, então não há nada pra comparar nem agregar no mapa de calor.
-  test "resultado sendo o primeiro a jogar o país não mostra comparação nem mapa de calor" do
+  # país, então não há nada pra comparar nem nenhum ponto de outro jogador.
+  test "resultado sendo o primeiro a jogar o país não mostra comparação nem pontos de outros jogadores" do
     sign_in_via_ui(users(:fernanda))
     primeira_rodada = GameRound.create!(user: users(:fernanda), country: countries(:edenia),
       guessed_lat: 25.0, guessed_lng: 5.0, time_seconds: 10)
@@ -45,7 +43,7 @@ class GamesTest < ApplicationSystemTestCase
 
     assert_text "Você é o primeiro a jogar este país!"
     assert_no_text "Comparação com outros jogadores"
-    assert_no_selector "canvas.leaflet-heatmap-layer"
+    assert_no_text "Cada ponto no mapa é um chute já feito por outro jogador"
   end
 
   # --- visitante (sem cadastro) ---

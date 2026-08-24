@@ -42,25 +42,25 @@ class GamesControllerTest < ActionDispatch::IntegrationTest
   end
 
   # A fixture atlantis já tem 3 game_rounds (acerto, quase, erro), então
-  # total_attempts > 1 — mostra comparação com outros jogadores e o mapa de
-  # calor fica embutido no mapa de resultado (mesmo data-controller="result-map"),
-  # com data-result-map-points-value preenchido.
-  test "GET /play/:id com outros jogadores no mesmo país mostra comparação e mapa de calor" do
+  # total_attempts > 1 — mostra comparação com outros jogadores e os pontos
+  # de todo mundo que já chutou embutidos no mapa de resultado (mesmo
+  # data-controller="result-map"), com data-result-map-guess-points-value
+  # preenchido.
+  test "GET /play/:id com outros jogadores no mesmo país mostra comparação e os pontos de todo mundo" do
     sign_in users(:fernanda)
 
     get game_path(game_rounds(:acerto))
 
     assert_response :success
     assert_includes response.body, "Comparação com outros jogadores"
-    assert_includes response.body, "O mapa de calor mostra onde todo mundo já chutou"
-    assert_not_includes response.body, 'data-result-map-points-value="[]"'
-    assert_not_includes response.body, 'data-result-map-sample-points-value="[]"'
+    assert_includes response.body, "Cada ponto no mapa é um chute já feito por outro jogador"
+    assert_not_includes response.body, 'data-result-map-guess-points-value="[]"'
     assert_not_includes response.body, "Você é o primeiro a jogar este país!"
   end
 
   # edenia não tem nenhum game_round nas fixtures: a rodada criada abaixo é a
-  # primeira. total_attempts == 1 → sem comparação, sem mapa de calor.
-  test "GET /play/:id sendo o primeiro a jogar o país não mostra comparação nem mapa de calor" do
+  # primeira. total_attempts == 1 → sem comparação, sem pontos de outros jogadores.
+  test "GET /play/:id sendo o primeiro a jogar o país não mostra comparação nem pontos de outros jogadores" do
     sign_in users(:fernanda)
     primeira_rodada = GameRound.create!(user: users(:fernanda), country: countries(:edenia),
       guessed_lat: 25.0, guessed_lng: 5.0, time_seconds: 10)
@@ -70,9 +70,8 @@ class GamesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "Você é o primeiro a jogar este país!"
     assert_not_includes response.body, "Comparação com outros jogadores"
-    assert_includes response.body, 'data-result-map-points-value="[]"'
-    assert_includes response.body, 'data-result-map-sample-points-value="[]"'
-    assert_not_includes response.body, "O mapa de calor mostra onde todo mundo já chutou"
+    assert_includes response.body, 'data-result-map-guess-points-value="[]"'
+    assert_not_includes response.body, "Cada ponto no mapa é um chute já feito por outro jogador"
   end
 
   test "GET /play/:id de uma rodada de outro usuário retorna 404" do

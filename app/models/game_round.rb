@@ -30,65 +30,13 @@ class GameRound < ApplicationRecord
   scope :close_guesses, -> { where(result: :close) }
   scope :successful_guesses, -> { where(result: [ :correct, :close ]) }
 
-  # Tamanho da célula do grid do mapa de calor, em graus (~111km no equador).
-  # Agrupa todos os chutes já feitos num país numa grade fixa antes de mandar
-  # pro navegador — isso limita a resposta a no máximo (360/cell) * (180/cell)
-  # pontos, não importa quantos milhares de GameRound existam pra esse país.
-  HEATMAP_CELL_SIZE = 1.0
-
-  # Agrega todo chute já feito num país numa grade, retornando [lat, lng, peso]
-  # pra alimentar o Leaflet.heat. cell_size nunca vem de input do usuário, então
-  # a interpolação de string no Arel.sql abaixo é segura (não é o mesmo padrão
-  # de risco das consultas PostGIS cruas em Country).
-  def self.heatmap_points(country_id, cell_size: HEATMAP_CELL_SIZE)
-    for_country(country_id)
-      .group(Arel.sql("ROUND(guessed_lat / #{cell_size}) * #{cell_size}"))
-      .group(Arel.sql("ROUND(guessed_lng / #{cell_size}) * #{cell_size}"))
-      .count
-      .map { |(lat, lng), weight| [ lat.to_f, lng.to_f, weight ] }
-  end
-
-  # Quantos pontos individuais no máximo desenhar no mapa de resultado. Limite
-  # fixo, independente do tamanho do país: um país grande pode ter milhares de
-  # células de 1° na grade do heatmap, e ninguém consegue distinguir 1000
-  # bolinhas sobrepostas num mapa de poucas centenas de pixels.
-  SAMPLE_POINTS_LIMIT = 30
-
-  # DISTINCT ON + ORDER BY dentro da célula sorteia qual chute real da célula
-  # sobrevive; o ORDER BY RANDOM() de fora sorteia quais células (até LIMIT)
-  # aparecem quando há mais células do que o limite.
-  SAMPLE_POINTS_SQL = <<~SQL
-    SELECT guessed_lat, guessed_lng, result
-    FROM (
-      SELECT DISTINCT ON (cell_lat, cell_lng) guessed_lat, guessed_lng, result
-      FROM (
-        SELECT guessed_lat, guessed_lng, result,
-               ROUND(guessed_lat / :cell_size) * :cell_size AS cell_lat,
-               ROUND(guessed_lng / :cell_size) * :cell_size AS cell_lng
-        FROM game_rounds
-        WHERE country_id = :country_id
-      ) cells
-      ORDER BY cell_lat, cell_lng, RANDOM()
-    ) deduped
-    ORDER BY RANDOM()
-    LIMIT :limit
-  SQL
-
-  # Amostra chutes individuais e anônimos pro mapa de resultado: um chute real
-  # por célula da mesma grade do heatmap_points (nunca o centro da célula —
-  # sempre coordenadas de um chute que aconteceu de verdade), sorteado ao
-  # acaso dentro da célula, e limitado a SAMPLE_POINTS_LIMIT no total. Não
-  # carrega user_id nem nada que identifique quem chutou — só posição e
-  # resultado (correct/close/wrong), pra colorir o ponto no mapa.
-  def self.sample_points(country_id, cell_size: HEATMAP_CELL_SIZE, limit: SAMPLE_POINTS_LIMIT)
-    sql = sanitize_sql_array([ SAMPLE_POINTS_SQL, cell_size: cell_size, country_id: country_id, limit: limit ])
-
-    connection.select_all(sql).map do |row|
-      {
-        lat: row["guessed_lat"].to_f,
-        lng: row["guessed_lng"].to_f,
-        result: results.key(row["result"].to_i)
-      }
+  # Todo chute já feito nesse país, anônimo (só posição — sem user_id nem
+  # resultado), pro mapa de resultado desenhar um ponto por chute. Sem
+  # limite: são só duas colunas numéricas por linha, e o navegador aguenta
+  # de sobra os milhares de pontos que mesmo o país mais popular teria.
+  def self.guess_points(country_id)
+    for_country(country_id).pluck(:guessed_lat, :guessed_lng).map do |lat, lng|
+      { lat: lat.to_f, lng: lng.to_f }
     end
   end
 
