@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { whenLeafletReady } from "leaflet_ready"
 
 /**
  * RoomResultMapController - Mostra o mapa de resultado de uma rodada de
@@ -32,15 +33,12 @@ export default class extends Controller {
   }
 
   connect() {
-    if (typeof L === "undefined") {
-      console.error("Leaflet não carregado!")
-      return
-    }
-
-    this.initializeMap()
+    this.stopWaitingForLeaflet = whenLeafletReady(() => this.initializeMap())
   }
 
   disconnect() {
+    this.stopWaitingForLeaflet?.()
+
     if (this.map) {
       this.map.remove()
     }

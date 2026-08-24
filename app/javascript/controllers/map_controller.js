@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { whenLeafletReady } from "leaflet_ready"
 
 /**
  * MapController - Controla o mapa interativo do jogo
@@ -22,16 +23,13 @@ export default class extends Controller {
   connect() {
     console.log("MapController conectado")
 
-    if (typeof L === "undefined") {
-      console.error("Leaflet não carregado!")
-      return
-    }
-
-    this.initializeMap()
+    this.stopWaitingForLeaflet = whenLeafletReady(() => this.initializeMap())
   }
 
   disconnect() {
     // Chamado quando o elemento é removido do DOM
+    this.stopWaitingForLeaflet?.()
+
     if (this.map) {
       this.map.remove()
     }

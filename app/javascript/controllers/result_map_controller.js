@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { whenLeafletReady } from "leaflet_ready"
 
 /**
  * ResultMapController - Mostra o mapa de resultado
@@ -45,15 +46,12 @@ export default class extends Controller {
   }
 
   connect() {
-    if (typeof L === "undefined") {
-      console.error("Leaflet não carregado!")
-      return
-    }
-
-    this.initializeMap()
+    this.stopWaitingForLeaflet = whenLeafletReady(() => this.initializeMap())
   }
 
   disconnect() {
+    this.stopWaitingForLeaflet?.()
+
     if (this.map) {
       this.map.remove()
     }
