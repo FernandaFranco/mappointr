@@ -1,6 +1,13 @@
 Rails.application.routes.draw do
   devise_for :users
 
+  # Login como visitante, sem cadastro — ver GuestSessionsController
+  post "guest_session", to: "guest_sessions#create"
+
+  # "Reivindicar" a conta de visitante como uma conta de verdade, mantendo o
+  # histórico da sessão — ver GuestClaimsController
+  resource :guest_claim, only: [ :new, :create ]
+
   # Rotas do jogo
   # GET  /play     → Inicia nova rodada (sorteia país, mostra mapa)
   # POST /play     → Processa chute do jogador

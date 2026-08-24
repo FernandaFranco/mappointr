@@ -30,7 +30,7 @@
        data-room-result-map-country-name-value="<%= room_round.country.name_pt %>"
        data-room-result-map-boundary-value="<%= room_round.country.boundary_geojson %>"
        data-room-result-map-guesses-value="<%= answered.map { |gr|
-         { lat: gr.guessed_lat, lng: gr.guessed_lng, result: gr.result, email: gr.user.email, distance_km: gr.distance_km }
+         { lat: gr.guessed_lat, lng: gr.guessed_lng, result: gr.result, label: gr.user.display_name, distance_km: gr.distance_km }
        }.to_json %>">
   </div>
 
@@ -45,7 +45,7 @@
     <tbody>
       <% answered.each do |game_round| %>
         <tr class="border-b last:border-0">
-          <td class="py-2 text-gray-800"><%= game_round.user.email %></td>
+          <td class="py-2 text-gray-800"><%= game_round.user.display_name %></td>
           <td class="py-2">
             <span class="font-medium <%= game_round.correct? ? "text-green-600" : (game_round.close? ? "text-yellow-600" : "text-red-600") %>">
               <%= game_round.result_message %>
@@ -56,7 +56,7 @@
       <% end %>
       <% unanswered.each do |room_player| %>
         <tr class="border-b last:border-0 text-gray-400">
-          <td class="py-2"><%= room_player.user.email %></td>
+          <td class="py-2"><%= room_player.user.display_name %></td>
           <td class="py-2">Não respondeu</td>
           <td class="py-2 text-right">—</td>
         </tr>
@@ -68,7 +68,7 @@
   <ol class="space-y-1">
     <% room.room_players.includes(:user).order(score: :desc).each do |room_player| %>
       <li class="flex justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
-        <span class="text-gray-800"><%= room_player.user.email %></span>
+        <span class="text-gray-800"><%= room_player.user.display_name %></span>
         <span class="font-semibold text-gray-800"><%= room_player.score %> pts</span>
       </li>
     <% end %>

@@ -227,6 +227,31 @@ class RoomsTest < ApplicationSystemTestCase
   # testado em test/jobs/room_sweep_job_test.rb). A salvaguarda principal e
   # reportada pelo usuário — a pausa por visibilidade — é a testada acima.
 
+  # Sessão única (não using_session): o que este teste prova que os testes
+  # de controller não conseguem é a troca .email → .display_name renderizando
+  # de verdade num navegador real, e o entry point "Jogar sem cadastro" (não
+  # o form de senha) funcionando ponta a ponta numa sala. O mecanismo de
+  # tempo real em si (broadcast entre duas sessões simultâneas) já está
+  # coberto pelo teste com dois jogadores reais lá em cima — repetir isso
+  # com dois visitantes seria caro e não provaria nada novo.
+  test "visitante consegue entrar numa sala em andamento, chutar e ver seu apelido no resultado" do
+    sala = criar_sala_em_andamento_com_rodada_ativa(total_rounds: 1)
+
+    sign_in_como_visitante
+    convidado = User.guest.order(:created_at).last
+    sala.room_players.create!(user: convidado)
+
+    visit room_path(sala)
+    assert_text "Rodada 1 de 1"
+
+    find("#map-container").click
+    assert_text(/Chute registrado|Resultado da rodada/)
+
+    # fernanda (host) ainda não chutou — só o convidado chutou até aqui —
+    # então a rodada não deveria ter finalizado sozinha.
+    assert_not sala.current_room_round.reload.finished?
+  end
+
   private
 
   def forcar_visibilidade_da_aba(hidden:)
@@ -296,5 +321,12 @@ class RoomsTest < ApplicationSystemTestCase
     # antes do redirect do Devise (POST sign_in -> root) assentar, perdendo
     # o cookie de sessão recém-criado.
     assert_text user.email
+  end
+
+  def sign_in_como_visitante
+    visit new_user_session_path
+    click_on "Jogar sem cadastro"
+
+    assert_text "Sair" # mesma sincronização de sign_in_via_ui, ver comentário lá
   end
 end

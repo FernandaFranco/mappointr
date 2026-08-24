@@ -123,6 +123,40 @@ class UserTest < ActiveSupport::TestCase
     assert_equal :easy, novato.next_difficulty, "...mas não devem entrar na janela de next_difficulty"
   end
 
+  # --- convidados: display_name, create_guest!, escopo guest ---
+
+  test "display_name de um usuário real é o e-mail" do
+    assert_equal "fernanda@example.com", users(:fernanda).display_name
+  end
+
+  test "display_name de um convidado é o apelido gerado, não o e-mail sintético" do
+    visitante = users(:guest_visitor)
+
+    assert_equal "Visitante Teste", visitante.display_name
+    assert_not_equal visitante.email, visitante.display_name
+  end
+
+  test "create_guest! cria um usuário válido, sinalizado guest, com apelido e e-mail únicos" do
+    convidado = User.create_guest!
+
+    assert convidado.persisted?
+    assert convidado.guest?
+    assert_match(/\AVisitante \d+\z/, convidado.display_name)
+    assert_match(/\Aguest-.+@guest\.mappointr\.local\z/, convidado.email)
+  end
+
+  test "create_guest! gera e-mails diferentes a cada chamada" do
+    primeiro = User.create_guest!
+    segundo = User.create_guest!
+
+    assert_not_equal primeiro.email, segundo.email
+  end
+
+  test "escopo guest inclui só usuários convidados" do
+    assert_includes User.guest, users(:guest_visitor)
+    assert_not_includes User.guest, users(:fernanda)
+  end
+
   private
 
   # Cria rodadas de jogo para +user+ com os resultados dados, em ordem

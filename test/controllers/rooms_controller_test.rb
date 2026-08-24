@@ -217,7 +217,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "Não respondeu"
-    assert_includes response.body, nao_respondeu.email
+    assert_includes response.body, nao_respondeu.display_name
     assert_includes response.body, "—", "linha de quem não respondeu deveria mostrar um travessão, não um número de distância"
 
     guesses_json = response.body[/data-room-result-map-guesses-value="([^"]*)"/, 1]
@@ -225,7 +225,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
     guesses = JSON.parse(CGI.unescapeHTML(guesses_json))
 
     assert_equal 1, guesses.length
-    assert_equal users(:fernanda).email, guesses.first["email"]
+    assert_equal users(:fernanda).display_name, guesses.first["label"]
   end
 
   # --- advance ---
@@ -323,6 +323,29 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert sala.reload.finished?
+  end
+
+  # --- visitantes (sem cadastro) ---
+
+  test "um usuário convidado consegue criar uma sala" do
+    sign_in User.create_guest!
+
+    assert_difference [ "Room.count", "RoomPlayer.count" ], 1 do
+      post rooms_path, params: { room: { total_rounds: 5, round_duration_seconds: 45 } }
+    end
+
+    assert_redirected_to room_path(Room.last)
+  end
+
+  test "um usuário convidado consegue entrar numa sala existente" do
+    sala = criar_sala(host: users(:fernanda))
+    sign_in User.create_guest!
+
+    assert_difference "RoomPlayer.count", 1 do
+      post join_room_path, params: { code: sala.code }
+    end
+
+    assert_redirected_to room_path(sala)
   end
 
   private

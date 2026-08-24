@@ -82,4 +82,27 @@ class GamesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  # --- fluxo completo como visitante (sem cadastro) ---
+
+  test "um usuário convidado consegue jogar uma rodada solo do início ao fim" do
+    sign_in User.create_guest!
+
+    get new_game_path
+    assert_response :success
+    country_id = session[:current_country_id]
+
+    post games_path, params: { lat: 5.0, lng: 5.0 }
+    game_round = GameRound.find_by(country_id: country_id, user: current_guest)
+    assert_not_nil game_round
+
+    get game_path(game_round)
+    assert_response :success
+  end
+
+  private
+
+  def current_guest
+    User.guest.order(:created_at).last
+  end
 end

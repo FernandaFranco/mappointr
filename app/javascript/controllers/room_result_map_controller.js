@@ -10,11 +10,12 @@ import { whenLeafletReady } from "leaflet_ready"
  * - Polígono do país destacado em verde
  * - Um marcador por jogador que respondeu, colorido pelo resultado
  *   (verde = correct, âmbar = close, vermelho = wrong)
- * - Popup por marcador com e-mail do jogador e distância
+ * - Popup por marcador com o nome do jogador (e-mail, ou apelido se for
+ *   visitante) e distância
  *
  * Uso no HTML:
  *   <div data-controller="room-result-map"
- *        data-room-result-map-guesses-value='[{"lat":1,"lng":2,"result":"correct","email":"a@b.com","distance_km":0}]'>
+ *        data-room-result-map-guesses-value='[{"lat":1,"lng":2,"result":"correct","label":"a@b.com","distance_km":0}]'>
  *   </div>
  */
 export default class extends Controller {
@@ -110,15 +111,16 @@ export default class extends Controller {
       })
 
       // Constrói o conteúdo do popup via textContent (não template string
-      // interpolada em innerHTML): guess.email vem do usuário (cadastro),
-      // e o regex de e-mail do Devise é permissivo o bastante pra não
-      // barrar marcação HTML — então nunca interpolamos direto em HTML.
+      // interpolada em innerHTML): guess.label é o e-mail (cadastro) ou o
+      // apelido de visitante, e nem o regex de e-mail do Devise nem
+      // display_name barram marcação HTML — então nunca interpolamos
+      // direto em HTML.
       const popupContent = document.createElement("div")
-      const emailLine = document.createElement("div")
-      emailLine.textContent = guess.email
+      const labelLine = document.createElement("div")
+      labelLine.textContent = guess.label
       const distanceLine = document.createElement("div")
       distanceLine.textContent = `${guess.distance_km} km`
-      popupContent.appendChild(emailLine)
+      popupContent.appendChild(labelLine)
       popupContent.appendChild(distanceLine)
 
       L.marker(coords, { icon }).addTo(this.map).bindPopup(popupContent)

@@ -80,6 +80,33 @@ class RoomGuessesControllerTest < ActionDispatch::IntegrationTest
     assert_match(/Erro ao registrar chute/, flash[:alert])
   end
 
+  # Guest joga como um dos dois jogadores da sala — cobre o chute em si e a
+  # renderização de rooms/_results.html.erb (display_name, não .email) numa
+  # rodada real, incluindo o último chute que finaliza e transmite o resultado.
+  test "um usuário convidado consegue chutar e finalizar a rodada sem levantar exceção" do
+    sala = criar_sala(host: users(:fernanda), total_rounds: 5, difficulty: :medium)
+    convidado = User.create_guest!
+    sala.room_players.create!(user: convidado)
+    sign_in users(:fernanda)
+    post start_room_path(sala)
+    sign_out users(:fernanda)
+    sala.reload
+
+    sign_in convidado
+    post room_guesses_path(sala), params: { lat: 5.0, lng: 5.0 }
+    assert_redirected_to room_path(sala)
+    sign_out convidado
+
+    # Segundo (e último) chute da rodada: dispara finalize! de verdade.
+    sign_in users(:fernanda)
+    post room_guesses_path(sala), params: { lat: 5.0, lng: 5.0 }
+    assert sala.current_room_round.reload.finished?
+
+    get room_path(sala)
+    assert_response :success
+    assert_includes response.body, convidado.display_name
+  end
+
   private
 
   def criar_sala(host:, status: :waiting, **attrs)

@@ -15,3 +15,9 @@ visitante:
 novato:
   email: novato@example.com
   encrypted_password: <%= Devise::Encryptor.digest(User, "password123") %>
+
+guest_visitor:
+  email: guest-fixture@guest.mappointr.local
+  encrypted_password: <%= Devise::Encryptor.digest(User, "password123") %>
+  guest: true
+  display_name: "Visitante Teste"

@@ -48,6 +48,52 @@ class GamesTest < ApplicationSystemTestCase
     assert_no_selector "canvas.leaflet-heatmap-layer"
   end
 
+  # --- visitante (sem cadastro) ---
+
+  test "visitante consegue jogar sem cadastro clicando em Jogar sem cadastro" do
+    visit new_user_session_path
+    click_on "Jogar sem cadastro"
+    assert_text "Sair" # mesma sincronização do sign_in_via_ui — ver comentário lá
+
+    assert_selector "#map-container"
+    # "Jogar sem cadastro" redireciona via Turbo (sem hard navigation) —
+    # sem esperar o placeholder sumir, o clique pode chegar antes do Leaflet
+    # ter inicializado de verdade e não registrar chute nenhum.
+    assert_no_text "Carregando mapa..."
+    find("#map-container").click
+
+    assert_text "Suas estatísticas"
+  end
+
+  test "visitante consegue reivindicar a conta como uma conta de verdade e mantém o histórico" do
+    visit new_user_session_path
+    click_on "Jogar sem cadastro"
+    assert_text "Sair"
+
+    assert_no_text "Carregando mapa..."
+    find("#map-container").click
+    assert_text "Suas estatísticas"
+
+    click_on "Criar conta"
+    assert_selector "h2", text: "Criar conta"
+
+    fill_in "E-mail", with: "visitante_convertido@example.com"
+    fill_in "Senha", with: "senha12345"
+    fill_in "Confirmar senha", with: "senha12345"
+    # click_on casaria com o link "Criar conta" do nav (ainda visível — o
+    # usuário só deixa de ser guest depois deste submit) e com o botão do
+    # form. click_button restringe a elementos de botão só.
+    click_button "Criar conta"
+
+    assert_text "Conta criada! Seu histórico de jogo foi mantido."
+    assert_text "visitante_convertido@example.com"
+    assert_no_text "Visitante "
+
+    click_on "Minhas estatísticas"
+    assert_no_text "Você ainda não jogou nenhuma rodada."
+    assert_text "Rodadas jogadas" # confirma que a rodada de antes de reivindicar a conta não sumiu
+  end
+
   private
 
   def sign_in_via_ui(user)

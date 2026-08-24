@@ -14,6 +14,10 @@ development:
     class: RoomSweepJob
     queue: default
     schedule: every 15 seconds
+  purge_guest_users:
+    class: PurgeGuestUsersJob
+    queue: default
+    schedule: every day at 4am
 
 production:
   clear_solid_queue_finished_jobs:
@@ -23,3 +27,7 @@ production:
     class: RoomSweepJob
     queue: default
     schedule: every 15 seconds
+  purge_guest_users:
+    class: PurgeGuestUsersJob
+    queue: default
+    schedule: every day at 4am
