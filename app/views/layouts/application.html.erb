@@ -37,10 +37,8 @@
   <body class="bg-slate-50 min-h-screen">
     <nav class="fixed top-0 inset-x-0 bg-white border-b border-gray-200 z-50">
       <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-        <%= link_to root_path, class: "flex items-center gap-2 font-bold text-gray-900 text-lg hover:text-red-600 transition" do %>
-          <span>📍</span>
-          <span>Mappointr</span>
-        <% end %>
+        <%= link_to "Mappointr", root_path,
+            class: "font-bold text-gray-900 text-lg hover:text-red-600 transition" %>
 
         <div class="flex items-center gap-4">
           <% if user_signed_in? %>

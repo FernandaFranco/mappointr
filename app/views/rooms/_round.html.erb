@@ -14,7 +14,7 @@
          data-room-countdown-seconds-left-value="<%= [ (room_round.started_at + room.round_duration_seconds - Time.current).to_i, 0 ].max %>"
          data-room-countdown-advance-url-value="<%= advance_room_path(room) %>"
          class="text-sm font-mono text-gray-600">
-      ⏱ <span data-room-countdown-target="display"></span>s
+      <span data-room-countdown-target="display"></span>s
     </div>
   </div>
 

@@ -10,9 +10,8 @@ import { whenLeafletReady } from "leaflet_ready"
  *   GameRound.guess_points) — sem identidade, sem cor por resultado, um
  *   dispersão de pontos simples, cada chute um ponto, sem agregação
  *   nenhuma. Vazio quando ninguém mais jogou.
- * - Marcador do chute do jogador, colorido e com o mesmo emoji do resultado
- *   (🎯 correct / 👏 close / 😅 wrong) — mesma paleta e mesma linguagem visual
- *   da mensagem principal da página, não mais um "?" fixo genérico.
+ * - Marcador do chute do jogador, colorido pelo resultado (verde = correct,
+ *   âmbar = close, vermelho = wrong) — mesma paleta usada em toda a página.
  * - Linha tracejada até o ponto mais próximo da fronteira
  */
 export default class extends Controller {
@@ -36,12 +35,6 @@ export default class extends Controller {
     correct: "#16a34a",
     close: "#ca8a04",
     wrong: "#dc2626"
-  }
-
-  static EMOJIS = {
-    correct: "🎯",
-    close: "👏",
-    wrong: "😅"
   }
 
   connect() {
@@ -99,27 +92,21 @@ export default class extends Controller {
 
     this.drawGuessPoints()
 
-    // Marcador do chute, colorido e com o emoji do resultado — já sabemos o
-    // resultado nesta página, um "?" genérico não faz mais sentido aqui.
+    // Marcador do chute, colorido pelo resultado.
     const guessColor = this.constructor.COLORS[this.resultValue] || "#dc2626"
-    const guessEmoji = this.constructor.EMOJIS[this.resultValue] || ""
 
     const guessIcon = L.divIcon({
       className: "guess-marker",
       html: `<div style="
-        width: 28px;
-        height: 28px;
+        width: 20px;
+        height: 20px;
         background-color: ${guessColor};
         border: 3px solid white;
         border-radius: 50%;
         box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-      ">${guessEmoji}</div>`,
-      iconSize: [28, 28],
-      iconAnchor: [14, 14]
+      "></div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
     })
 
     L.marker(guessCoords, { icon: guessIcon })

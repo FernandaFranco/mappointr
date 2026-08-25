@@ -32,17 +32,14 @@
     <div class="text-center mb-6">
       <% case @game_round.result %>
       <% when "correct" %>
-        <div class="text-6xl mb-2">🎯</div>
         <h1 class="text-3xl font-bold text-green-600"><%= @game_round.result_message %></h1>
         <p class="text-gray-600 mt-2">Você acertou em cheio o <%= @country.name_pt %>!</p>
       <% when "close" %>
-        <div class="text-6xl mb-2">👏</div>
         <h1 class="text-3xl font-bold text-yellow-600"><%= @game_round.result_message %></h1>
         <p class="text-gray-600 mt-2">
           Seu chute está a <strong><%= @game_round.distance_km %> km</strong> de <%= @country.name_pt %>
         </p>
       <% when "wrong" %>
-        <div class="text-6xl mb-2">😅</div>
         <h1 class="text-3xl font-bold text-red-600"><%= @game_round.result_message %></h1>
         <p class="text-gray-600 mt-2">
           Seu chute está a <strong><%= number_with_delimiter(@game_round.distance_km) %> km</strong> de <%= @country.name_pt %>
@@ -106,7 +103,7 @@
       </div>
     <% else %>
       <div class="border-t pt-6 mt-6 text-center text-gray-500">
-        <p>Você é o primeiro a jogar este país! 🎉</p>
+        <p>Você é o primeiro a jogar este país!</p>
       </div>
     <% end %>
 

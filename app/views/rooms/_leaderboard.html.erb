@@ -1,7 +1,6 @@
 <%# Placar final — variáveis: room %>
 
 <div class="bg-white rounded-lg shadow-lg p-6 text-center">
-  <div class="text-5xl mb-2">🏆</div>
   <h2 class="text-2xl font-bold text-gray-900 mb-6">Fim de jogo!</h2>
 
   <ol class="space-y-2 mb-6 text-left">
@@ -9,7 +8,6 @@
       <li class="flex items-center justify-between rounded-lg px-4 py-3 <%= index.zero? ? "bg-yellow-50 border border-yellow-200" : "bg-gray-50" %>">
         <span class="text-gray-800">
           <%= index + 1 %>º — <%= room_player.user.display_name %>
-          <% if index.zero? %><span class="ml-1">🥇</span><% end %>
         </span>
         <span class="font-bold text-gray-900"><%= room_player.score %> pts</span>
       </li>
