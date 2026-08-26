@@ -7,7 +7,9 @@ e o app usa PostGIS para medir o quão perto o chute ficou da fronteira real.
 
 - Ruby 3.4.3, Rails 8.1.3.1 (`config.load_defaults 8.1`)
 - PostgreSQL + PostGIS via `activerecord-postgis-adapter` (adapter: `postgis`)
-- Devise para autenticação
+- Sem autenticação: todo visitante vira um `User` na primeira request
+  (`ApplicationController#set_current_user`), identificado só por
+  `session[:user_id]`. Sem login, sem senha, sem conta "de verdade".
 - Hotwire (Turbo + Stimulus) com importmap — **sem build de JS, sem node_modules**
 - Tailwind via `tailwindcss-rails` (gera `app/assets/builds/tailwind.css`)
 - Leaflet 1.9.4 carregado por CDN em `app/views/layouts/application.html.erb`,
@@ -39,8 +41,11 @@ CI (`.github/workflows/ci.yml`) roda: brakeman, `bin/importmap audit`, rubocop e
 - `GameRound` — pertence a user + country. Um callback `before_validation` calcula
   `distance_km` via PostGIS e deriva o enum `result`: `correct` (distância 0),
   `close` (≤ `CLOSE_THRESHOLD_KM`, 500km) ou `wrong`.
-- `User` — Devise, com métodos de estatística (`accuracy_percentage`, etc.) que
-  ainda não têm view.
+- `User` — só `display_name` (gerado por `create_player!`, ex. "Visitante 4821")
+  além de id/timestamps. Sem e-mail, sem senha. Métodos de estatística por
+  usuário (`accuracy_percentage`, etc.) existem mas não têm view própria —
+  `StatsController#show` mostra estatísticas **globais** por país, não
+  pessoais.
 
 Fluxo de jogo: `GamesController#new` sorteia o país e guarda
 `session[:current_country_id]` + `session[:round_started_at]`. O clique no mapa é
@@ -71,12 +76,13 @@ calcula o tempo. `#show` exibe o resultado com estatísticas comparativas.
   (`"SRID=4326;MULTIPOLYGON(((...)))"`), senão as consultas PostGIS retornam nil.
   Fixtures não disparam callbacks, então `distance_km`/`result` de `game_rounds`
   são escritos à mão nos arquivos de fixture.
-- Fixtures de `users` precisam de `encrypted_password` gerado com
-  `<%= Devise::Encryptor.digest(User, "password123") %>`.
 - `Country#distance_from` arredonda para 1 casa decimal e `GameRound` arredonda de
   novo com `.round` (não `.to_i`) — usar `.to_i` truncava chutes a menos de 1km
   **fora** da fronteira para distância 0, premiando como `correct`. Já corrigido;
   não reintroduza o truncamento.
-- `test/system/` cobre salas multiplayer (`rooms_test.rb`) e a página de estatísticas
-  (`stats_test.rb`), mas não tem cobertura de sistema pro fluxo solo de jogo
-  (`games#new` → clique no mapa → `games#create`) — só teste de controller.
+- Sem login, testes não têm `sign_in`/senha. Pra fixar qual `User` uma sessão
+  representa: em teste de controller/integração, `sign_in_as(user)` (definido em
+  `test_helper.rb`, faz um `get` real pra `TestSignInsController`); em teste de
+  sistema, mesmo nome mas via `visit` (definido em `application_system_test_case.rb`).
+  A rota `test_sign_in/:user_id` só existe quando `Rails.env.test?` — não tenta
+  usá-la fora de teste.
