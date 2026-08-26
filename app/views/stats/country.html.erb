@@ -1,0 +1,51 @@
+<%# Painel de estatísticas de um país só, carregado dentro do turbo-frame
+    "country-stats-panel" (ver stats/show.html.erb) ao clicar nele no mapa %>
+<%# Variáveis: @country, @stat, @guess_points %>
+
+<%# data-controller vai no elemento de dentro do frame, não na turbo-frame
+    em si: navegação de turbo-frame só troca os FILHOS de um frame já
+    existente — atributos colocados na tag turbo-frame da resposta (como
+    data-controller) são ignorados, só o conteúdo interno é substituído de
+    verdade no DOM. %>
+<%= turbo_frame_tag "country-stats-panel" do %>
+  <div class="mt-4 border-t pt-4"
+       data-controller="country-guess-points"
+       data-country-guess-points-points-value="<%= @guess_points.to_json %>">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-bold text-gray-900"><%= @country.name_pt %></h2>
+      <%= link_to "Fechar", stats_path, data: { turbo_frame: "_top" },
+          class: "text-sm text-gray-500 hover:text-red-600 transition" %>
+    </div>
+
+    <% if @stat.nil? %>
+      <p class="text-gray-500">Nenhuma rodada registrada para este país ainda.</p>
+    <% else %>
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">Tentativas</div>
+          <div class="text-2xl font-bold text-gray-800"><%= @stat[:total] %></div>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">% acerto</div>
+          <div class="text-2xl font-bold text-green-600"><%= @stat[:correct_percentage] %>%</div>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">% quase</div>
+          <div class="text-2xl font-bold text-yellow-600"><%= @stat[:close_percentage] %>%</div>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">% erro</div>
+          <div class="text-2xl font-bold text-red-600"><%= @stat[:wrong_percentage] %>%</div>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4">
+          <div class="text-sm text-gray-500">Distância média</div>
+          <div class="text-2xl font-bold text-gray-800"><%= number_with_delimiter(@stat[:avg_distance]) %> km</div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

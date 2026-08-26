@@ -1,48 +1,31 @@
-<%# View de estatísticas globais, por país %>
-<%# Variáveis: @country_stats %>
+<%# View de estatísticas globais: mapa-múndi interativo %>
+<%# Variáveis: @played_countries %>
 
 <div class="w-full max-w-4xl mx-auto">
   <div class="bg-white rounded-lg shadow-lg p-6">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Estatísticas globais</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">Estatísticas globais</h1>
 
-    <% if @country_stats.empty? %>
+    <% if @played_countries.empty? %>
       <div class="text-center py-8 text-gray-500">
         <p class="mb-4">Ninguém jogou nenhuma rodada ainda.</p>
         <%= link_to "Jogar agora", new_game_path,
             class: "inline-block bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150" %>
       </div>
     <% else %>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left">
-          <thead>
-            <tr class="border-b border-gray-200 text-sm text-gray-500">
-              <th class="py-2 pr-4">País</th>
-              <th class="py-2 px-4 text-right">Tentativas</th>
-              <th class="py-2 px-4 text-right">% acerto</th>
-              <th class="py-2 px-4 text-right">% quase</th>
-              <th class="py-2 px-4 text-right">% erro</th>
-              <th class="py-2 pl-4 text-right">Distância média</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @country_stats.each do |stat| %>
-              <tr class="border-b border-gray-100">
-                <td class="py-2 pr-4 font-medium text-gray-800"><%= stat[:country].name_pt %></td>
-                <td class="py-2 px-4 text-right"><%= stat[:total] %></td>
-                <td class="py-2 px-4 text-right text-green-600"><%= stat[:correct_percentage] %>%</td>
-                <td class="py-2 px-4 text-right text-yellow-600"><%= stat[:close_percentage] %>%</td>
-                <td class="py-2 px-4 text-right text-red-600"><%= stat[:wrong_percentage] %>%</td>
-                <td class="py-2 pl-4 text-right"><%= number_with_delimiter(stat[:avg_distance]) %> km</td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
+      <p class="text-sm text-gray-500 mb-4">
+        Clique em um país destacado no mapa para ver as estatísticas dele.
+      </p>
+
+      <div id="stats-map-container"
+           class="w-full h-96 bg-gray-200 rounded-lg"
+           data-controller="stats-map"
+           data-stats-map-countries-value="<%= @played_countries.to_json %>"
+           data-action="country-guess-points:loaded@window->stats-map#drawGuesses">
       </div>
 
-      <div class="mt-8">
-        <%= link_to "Jogar agora", new_game_path,
-            class: "block w-full text-center bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150" %>
-      </div>
+      <%= turbo_frame_tag "country-stats-panel" do %>
+        <p class="text-sm text-gray-400 mt-4">Nenhum país selecionado ainda.</p>
+      <% end %>
     <% end %>
   </div>
 </div>

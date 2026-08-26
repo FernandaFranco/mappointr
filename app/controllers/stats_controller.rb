@@ -1,26 +1,37 @@
 class StatsController < ApplicationController
   # GET /stats
-  # Estatísticas globais por país: quantas vezes cada país já foi
-  # tentado e como os chutes se distribuíram entre acerto/quase/erro.
-  # Pública — não depende de current_user.
+  # Mapa-múndi interativo: países já jogados aparecem clicáveis. Escolher um
+  # deles carrega suas estatísticas + pontos de chute via GET /stats/:id
+  # (#country) dentro de um turbo-frame, sem recarregar a página. Pública —
+  # não depende de current_user.
   def show
-    totals = GameRound.group(:country_id).count
-    corrects = GameRound.correct.group(:country_id).count
-    closes = GameRound.close.group(:country_id).count
-    wrongs = GameRound.wrong.group(:country_id).count
-    avg_distances = GameRound.group(:country_id).average(:distance_km)
+    @played_countries = Country.where(id: GameRound.distinct.pluck(:country_id))
+      .pluck(:id, :name_pt, Arel.sql("ST_AsGeoJSON(boundary::geometry, 4)"))
+      .map { |id, name_pt, boundary| { id: id, name_pt: name_pt, boundary: boundary } }
+  end
 
-    countries = Country.where(id: totals.keys).index_by(&:id)
+  # GET /stats/:country_id
+  # Estatísticas + pontos de chute de um país só — carregado dentro do
+  # turbo-frame "country-stats-panel" quando o jogador clica nele no mapa.
+  def country
+    @country = Country.find(params[:country_id])
+    @stat = country_stat(@country.id)
+    @guess_points = GameRound.guess_points(@country.id)
+  end
 
-    @country_stats = totals.map do |country_id, total|
-      {
-        country: countries[country_id],
-        total: total,
-        correct_percentage: ((corrects[country_id] || 0).to_f / total * 100).round(1),
-        close_percentage: ((closes[country_id] || 0).to_f / total * 100).round(1),
-        wrong_percentage: ((wrongs[country_id] || 0).to_f / total * 100).round(1),
-        avg_distance: avg_distances[country_id]&.round(1) || 0
-      }
-    end.sort_by { |stat| -stat[:total] }
+  private
+
+  def country_stat(country_id)
+    rounds = GameRound.for_country(country_id)
+    total = rounds.count
+    return nil if total.zero?
+
+    {
+      total: total,
+      correct_percentage: (rounds.correct.count.to_f / total * 100).round(1),
+      close_percentage: (rounds.close.count.to_f / total * 100).round(1),
+      wrong_percentage: (rounds.wrong.count.to_f / total * 100).round(1),
+      avg_distance: rounds.average(:distance_km)&.round(1) || 0
+    }
   end
 end

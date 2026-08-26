@@ -13,6 +13,9 @@ Rails.application.routes.draw do
 
   # Estatísticas globais por país, públicas
   resource :stats, only: :show
+  # Estatísticas + pontos de chute de um país só, carregado via turbo-frame
+  # ao clicar nele no mapa da página de estatísticas — ver StatsController#country
+  get "stats/:country_id", to: "stats#country", as: :country_stats
 
   # Salas multiplayer em tempo real
   post "rooms/join", to: "rooms#join", as: :join_room
