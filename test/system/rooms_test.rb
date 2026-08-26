@@ -24,9 +24,9 @@ class RoomsTest < ApplicationSystemTestCase
   # in the application under test can navigate the browser away... if the
   # timing is just right"): um fetch autenticado ainda em voo pode receber
   # um Set-Cookie de volta DEPOIS que Capybara.reset_sessions! já limpou os
-  # cookies, "ressuscitando" uma sessão logada bem na hora que o próximo
-  # teste reaproveita a mesma janela/cookie jar — daí o
-  # "You are already signed in." intermitente no sign_in_via_ui de um
+  # cookies, "ressuscitando" uma sessão identificada bem na hora que o
+  # próximo teste reaproveita a mesma janela/cookie jar — daí assertions
+  # sobre qual jogador está na página falhando de forma intermitente num
   # teste completamente diferente. Navegar pra about:blank aqui (ANTES do
   # teardown de reset_sessions! da classe-pai, que roda depois já que
   # teardowns de subclasse rodam primeiro) derruba os controllers Stimulus
@@ -43,7 +43,7 @@ class RoomsTest < ApplicationSystemTestCase
     room_code = nil
 
     using_session(:host) do
-      sign_in_via_ui(users(:fernanda))
+      sign_in_as(users(:fernanda))
       visit new_room_path
 
       fill_in "Número de rodadas", with: 1
@@ -56,7 +56,7 @@ class RoomsTest < ApplicationSystemTestCase
     end
 
     using_session(:guest) do
-      sign_in_via_ui(users(:visitante))
+      sign_in_as(users(:visitante))
       visit new_room_path
 
       fill_in "Ex: VT4SHF", with: room_code
@@ -69,7 +69,7 @@ class RoomsTest < ApplicationSystemTestCase
     # A lista de jogadores do host deve atualizar sozinha via broadcast —
     # sem recarregar a página nem navegar de novo nesta sessão.
     using_session(:host) do
-      assert_text "visitante@example.com"
+      assert_text users(:visitante).display_name
       click_on "Iniciar jogo"
       assert_text "Rodada 1 de 1"
     end
@@ -136,7 +136,7 @@ class RoomsTest < ApplicationSystemTestCase
   test "aba em segundo plano pausa o ping do countdown e retoma com ping imediato ao voltar a ficar visível" do
     sala = criar_sala_em_andamento_com_rodada_ativa
 
-    sign_in_via_ui(sala.host)
+    sign_in_as(sala.host)
     visit room_path(sala)
 
     assert_selector "[data-controller='room-countdown']"
@@ -182,7 +182,7 @@ class RoomsTest < ApplicationSystemTestCase
   test "aba perdida durante uma sala em andamento sincroniza pro placar final ao voltar a ficar visível" do
     sala = criar_sala_em_andamento_com_rodada_ativa(total_rounds: 1)
 
-    sign_in_via_ui(sala.host)
+    sign_in_as(sala.host)
     visit room_path(sala)
 
     assert_text "Rodada 1 de 1"
@@ -209,7 +209,7 @@ class RoomsTest < ApplicationSystemTestCase
       total_rounds: 1, round_duration_seconds: 600)
     sala.room_players.create!(user: users(:fernanda))
 
-    sign_in_via_ui(sala.host)
+    sign_in_as(sala.host)
     visit room_path(sala)
 
     assert_text "Compartilhe este código com seus amigos"
@@ -237,17 +237,18 @@ class RoomsTest < ApplicationSystemTestCase
   # reportada pelo usuário — a pausa por visibilidade — é a testada acima.
 
   # Sessão única (não using_session): o que este teste prova que os testes
-  # de controller não conseguem é a troca .email → .display_name renderizando
-  # de verdade num navegador real, e o entry point "Jogar sem cadastro" (não
-  # o form de senha) funcionando ponta a ponta numa sala. O mecanismo de
-  # tempo real em si (broadcast entre duas sessões simultâneas) já está
-  # coberto pelo teste com dois jogadores reais lá em cima — repetir isso
-  # com dois visitantes seria caro e não provaria nada novo.
-  test "visitante consegue entrar numa sala em andamento, chutar e ver seu apelido no resultado" do
+  # de controller não conseguem é a criação silenciosa de um jogador na
+  # primeira visita (sem sign_in_as nenhum, ver ApplicationController)
+  # renderizando de verdade num navegador real, incluindo seu apelido
+  # aparecendo no resultado. O mecanismo de tempo real em si (broadcast
+  # entre duas sessões simultâneas) já está coberto pelo teste com dois
+  # jogadores reais lá em cima — repetir isso com um segundo visitante
+  # seria caro e não provaria nada novo.
+  test "um jogador novo, na primeira visita, consegue entrar numa sala em andamento, chutar e ver seu apelido no resultado" do
     sala = criar_sala_em_andamento_com_rodada_ativa(total_rounds: 1)
 
-    sign_in_como_visitante
-    convidado = User.guest.order(:created_at).last
+    visit new_room_path
+    convidado = User.order(:created_at).last
     sala.room_players.create!(user: convidado)
 
     visit room_path(sala)
@@ -316,26 +317,5 @@ class RoomsTest < ApplicationSystemTestCase
     round = RoomRound.create!(room: sala, country: countries(:atlantis), round_number: 1, started_at: Time.current)
     Room.where(id: sala.id).update_all(status: Room.statuses[:in_progress],
       current_round_number: 1, current_room_round_id: round.id)
-  end
-
-  def sign_in_via_ui(user)
-    visit new_user_session_path
-
-    fill_in "E-mail", with: user.email
-    fill_in "Senha", with: "password123"
-    click_on "Entrar"
-
-    # `visit` não espera a navegação terminar como find/assert_text esperam
-    # — sem essa sincronização, um `visit` logo em seguida pode disparar
-    # antes do redirect do Devise (POST sign_in -> root) assentar, perdendo
-    # o cookie de sessão recém-criado.
-    assert_text user.email
-  end
-
-  def sign_in_como_visitante
-    visit new_user_session_path
-    click_on "Jogar sem cadastro"
-
-    assert_text "Sair" # mesma sincronização de sign_in_via_ui, ver comentário lá
   end
 end

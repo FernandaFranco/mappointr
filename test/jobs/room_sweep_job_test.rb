@@ -127,7 +127,7 @@ class RoomSweepJobTest < ActiveSupport::TestCase
 
   def adicionar_jogadores(sala, count)
     Array.new(count) do |i|
-      user = User.create!(email: "sweep_extra_#{SecureRandom.hex(4)}_#{i}@example.com", password: "password123")
+      user = User.create_player!
       sala.room_players.create!(user: user)
       user
     end

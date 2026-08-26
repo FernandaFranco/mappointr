@@ -153,9 +153,7 @@ class RoomRoundTest < ActiveSupport::TestCase
     disponiveis = [ users(:fernanda), users(:visitante), users(:novato) ]
     return disponiveis.first(count) if count <= disponiveis.size
 
-    disponiveis + Array.new(count - disponiveis.size) do |i|
-      User.create!(email: "sala_extra_#{i}_#{SecureRandom.hex(4)}@example.com", password: "password123")
-    end
+    disponiveis + Array.new(count - disponiveis.size) { User.create_player! }
   end
 
   def room_players(round)

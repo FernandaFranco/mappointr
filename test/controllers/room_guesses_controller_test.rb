@@ -3,7 +3,7 @@ require "test_helper"
 class RoomGuessesControllerTest < ActionDispatch::IntegrationTest
   test "POST /rooms/:room_id/guesses aceita o chute no meio da rodada" do
     sala = iniciar_sala_em_andamento(jogadores: 2)
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     assert_difference "GameRound.count", 1 do
       post room_guesses_path(sala), params: { lat: 5.0, lng: 5.0 }
@@ -20,7 +20,7 @@ class RoomGuessesControllerTest < ActionDispatch::IntegrationTest
     sala = iniciar_sala_em_andamento(jogadores: 2)
     rodada = sala.current_room_round
     rodada.finalize!
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     assert_no_difference "GameRound.count" do
       post room_guesses_path(sala), params: { lat: 5.0, lng: 5.0 }
@@ -32,7 +32,7 @@ class RoomGuessesControllerTest < ActionDispatch::IntegrationTest
 
   test "POST /rooms/:room_id/guesses é rejeitado para quem não é membro da sala" do
     sala = iniciar_sala_em_andamento(jogadores: 2)
-    sign_in users(:novato)
+    sign_in_as users(:novato)
 
     assert_no_difference "GameRound.count" do
       post room_guesses_path(sala), params: { lat: 5.0, lng: 5.0 }
@@ -54,7 +54,7 @@ class RoomGuessesControllerTest < ActionDispatch::IntegrationTest
     outro_jogador = (rodada.room.players - [ users(:fernanda) ]).first
     GameRound.create!(user: outro_jogador, country: rodada.country, room_round: rodada,
       guessed_lat: 5.0, guessed_lng: 5.0, time_seconds: 5)
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     post room_guesses_path(sala), params: { lat: 5.0, lng: 5.0 }
 
@@ -68,7 +68,7 @@ class RoomGuessesControllerTest < ActionDispatch::IntegrationTest
   # não estourar um RecordInvalid/RecordNotUnique não tratado.
   test "não é possível chutar duas vezes na mesma rodada" do
     sala = iniciar_sala_em_andamento(jogadores: 2)
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
     post room_guesses_path(sala), params: { lat: 5.0, lng: 5.0 }
     assert_equal 1, sala.current_room_round.reload.game_rounds.where(user: users(:fernanda)).count
 
@@ -80,31 +80,30 @@ class RoomGuessesControllerTest < ActionDispatch::IntegrationTest
     assert_match(/Erro ao registrar chute/, flash[:alert])
   end
 
-  # Guest joga como um dos dois jogadores da sala — cobre o chute em si e a
-  # renderização de rooms/_results.html.erb (display_name, não .email) numa
-  # rodada real, incluindo o último chute que finaliza e transmite o resultado.
-  test "um usuário convidado consegue chutar e finalizar a rodada sem levantar exceção" do
+  # Um segundo jogador (identidade separada, nunca via sign_in_as) joga como
+  # um dos dois jogadores da sala — cobre o chute em si e a renderização de
+  # rooms/_results.html.erb (display_name) numa rodada real, incluindo o
+  # último chute que finaliza e transmite o resultado.
+  test "um segundo jogador consegue chutar e finalizar a rodada sem levantar exceção" do
     sala = criar_sala(host: users(:fernanda), total_rounds: 5, difficulty: :medium)
-    convidado = User.create_guest!
-    sala.room_players.create!(user: convidado)
-    sign_in users(:fernanda)
+    outro_jogador = User.create_player!
+    sala.room_players.create!(user: outro_jogador)
+    sign_in_as users(:fernanda)
     post start_room_path(sala)
-    sign_out users(:fernanda)
     sala.reload
 
-    sign_in convidado
+    sign_in_as outro_jogador
     post room_guesses_path(sala), params: { lat: 5.0, lng: 5.0 }
     assert_redirected_to room_path(sala)
-    sign_out convidado
 
     # Segundo (e último) chute da rodada: dispara finalize! de verdade.
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
     post room_guesses_path(sala), params: { lat: 5.0, lng: 5.0 }
     assert sala.current_room_round.reload.finished?
 
     get room_path(sala)
     assert_response :success
-    assert_includes response.body, convidado.display_name
+    assert_includes response.body, outro_jogador.display_name
   end
 
   private
@@ -117,7 +116,7 @@ class RoomGuessesControllerTest < ActionDispatch::IntegrationTest
 
   def adicionar_jogadores(sala, count)
     Array.new(count) do |i|
-      user = User.create!(email: "extra_#{SecureRandom.hex(4)}_#{i}@example.com", password: "password123")
+      user = User.create_player!
       sala.room_players.create!(user: user)
       user
     end
@@ -129,10 +128,9 @@ class RoomGuessesControllerTest < ActionDispatch::IntegrationTest
   def iniciar_sala_em_andamento(jogadores:, total_rounds: 5, difficulty: :medium)
     sala = criar_sala(host: users(:fernanda), total_rounds: total_rounds, difficulty: difficulty)
     adicionar_jogadores(sala, jogadores - 1)
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     post start_room_path(sala)
-    sign_out users(:fernanda)
     sala.reload
   end
 end

@@ -1,23 +1,14 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 #
-# Senha de ambos: "password123" (use TEST_PASSWORD nos testes de login)
+# Sem login: um User é só um apelido. Ver test_helper.rb#sign_in_as.
 
 fernanda:
-  email: fernanda@example.com
-  encrypted_password: <%= Devise::Encryptor.digest(User, "password123") %>
+  display_name: Fernanda
 
 visitante:
-  email: visitante@example.com
-  encrypted_password: <%= Devise::Encryptor.digest(User, "password123") %>
+  display_name: Visitante
 
 # Sem game_rounds — usado para testar os casos de "zero jogos" (guards de
 # divisão por zero nas porcentagens e o estado vazio da página de estatísticas)
 novato:
-  email: novato@example.com
-  encrypted_password: <%= Devise::Encryptor.digest(User, "password123") %>
-
-guest_visitor:
-  email: guest-fixture@guest.mappointr.local
-  encrypted_password: <%= Devise::Encryptor.digest(User, "password123") %>
-  guest: true
-  display_name: "Visitante Teste"
+  display_name: Novato

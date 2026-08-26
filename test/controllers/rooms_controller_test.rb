@@ -1,18 +1,10 @@
 require "test_helper"
 
 class RoomsControllerTest < ActionDispatch::IntegrationTest
-  # --- new ---
-
-  test "GET /rooms/new sem login redireciona para o sign in" do
-    get new_room_path
-
-    assert_redirected_to new_user_session_path
-  end
-
   # --- create ---
 
   test "POST /rooms cria a sala e o host entra automaticamente como jogador" do
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     assert_difference [ "Room.count", "RoomPlayer.count" ], 1 do
       post rooms_path, params: { room: { total_rounds: 5, round_duration_seconds: 45 } }
@@ -25,7 +17,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "POST /rooms com parâmetros inválidos não cria a sala e renderiza o formulário" do
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     assert_no_difference "Room.count" do
       post rooms_path, params: { room: { total_rounds: 0, round_duration_seconds: 45 } }
@@ -34,11 +26,19 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
+  test "um jogador da primeira visita (sem sign_in_as prévio) consegue criar uma sala" do
+    assert_difference [ "Room.count", "RoomPlayer.count" ], 1 do
+      post rooms_path, params: { room: { total_rounds: 5, round_duration_seconds: 45 } }
+    end
+
+    assert_redirected_to room_path(Room.last)
+  end
+
   # --- join ---
 
   test "POST /rooms/join com código válido entra na sala" do
     sala = criar_sala(host: users(:fernanda))
-    sign_in users(:visitante)
+    sign_in_as users(:visitante)
 
     assert_difference "RoomPlayer.count", 1 do
       post join_room_path, params: { code: sala.code }
@@ -50,7 +50,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
 
   test "POST /rooms/join aceita o código em minúsculas" do
     sala = criar_sala(host: users(:fernanda))
-    sign_in users(:visitante)
+    sign_in_as users(:visitante)
 
     post join_room_path, params: { code: sala.code.downcase }
 
@@ -60,7 +60,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
 
   test "POST /rooms/join quando já é membro apenas redireciona, sem duplicar" do
     sala = criar_sala(host: users(:fernanda))
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     assert_no_difference "RoomPlayer.count" do
       post join_room_path, params: { code: sala.code }
@@ -70,7 +70,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "POST /rooms/join com código inexistente redireciona com alerta" do
-    sign_in users(:visitante)
+    sign_in_as users(:visitante)
 
     post join_room_path, params: { code: "ZZZZZZ" }
 
@@ -80,7 +80,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
 
   test "POST /rooms/join numa sala que já começou é rejeitado" do
     sala = criar_sala(host: users(:fernanda), status: :in_progress)
-    sign_in users(:visitante)
+    sign_in_as users(:visitante)
 
     assert_no_difference "RoomPlayer.count" do
       post join_room_path, params: { code: sala.code }
@@ -94,7 +94,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
     sala = criar_sala(host: users(:fernanda))
     adicionar_jogadores(sala, Room::MAX_PLAYERS - 1) # host já ocupa 1 vaga
     assert sala.reload.full?
-    sign_in users(:visitante)
+    sign_in_as users(:visitante)
 
     assert_no_difference "RoomPlayer.count" do
       post join_room_path, params: { code: sala.code }
@@ -104,11 +104,21 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Essa sala está cheia.", flash[:alert]
   end
 
+  test "um jogador da primeira visita (sem sign_in_as prévio) consegue entrar numa sala existente" do
+    sala = criar_sala(host: users(:fernanda))
+
+    assert_difference "RoomPlayer.count", 1 do
+      post join_room_path, params: { code: sala.code }
+    end
+
+    assert_redirected_to room_path(sala)
+  end
+
   # --- show ---
 
   test "GET /rooms/:id só é acessível para membros da sala" do
     sala = criar_sala(host: users(:fernanda))
-    sign_in users(:visitante)
+    sign_in_as users(:visitante)
 
     get room_path(sala)
 
@@ -118,7 +128,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
 
   test "GET /rooms/:id expira automaticamente uma sala parada há mais de STALE_AFTER" do
     sala = criar_sala(host: users(:fernanda))
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     travel Room::STALE_AFTER + 1.minute do
       get room_path(sala)
@@ -131,7 +141,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
 
   test "GET /rooms/:id de uma sala fresca não a expira" do
     sala = criar_sala(host: users(:fernanda))
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     get room_path(sala)
 
@@ -144,7 +154,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
   test "POST /rooms/:id/start só o host pode iniciar" do
     sala = criar_sala(host: users(:fernanda))
     adicionar_jogador(sala, users(:visitante))
-    sign_in users(:visitante)
+    sign_in_as users(:visitante)
 
     post start_room_path(sala)
 
@@ -156,7 +166,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
   test "POST /rooms/:id/start exige status waiting" do
     sala = criar_sala(host: users(:fernanda), status: :in_progress)
     adicionar_jogador(sala, users(:visitante))
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     post start_room_path(sala)
 
@@ -167,7 +177,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
 
   test "POST /rooms/:id/start exige pelo menos MIN_PLAYERS jogadores" do
     sala = criar_sala(host: users(:fernanda)) # só o host, 1 jogador
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     post start_room_path(sala)
 
@@ -185,7 +195,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
   test "POST /rooms/:id/start com jogadores suficientes inicia a sala sem levantar exceção ao transmitir a rodada" do
     sala = criar_sala(host: users(:fernanda))
     adicionar_jogador(sala, users(:visitante))
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     post start_room_path(sala)
 
@@ -211,7 +221,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
       guessed_lat: 5.0, guessed_lng: 5.0, time_seconds: 5)
 
     round.finalize!
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     get room_path(sala)
 
@@ -325,29 +335,6 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
     assert sala.reload.finished?
   end
 
-  # --- visitantes (sem cadastro) ---
-
-  test "um usuário convidado consegue criar uma sala" do
-    sign_in User.create_guest!
-
-    assert_difference [ "Room.count", "RoomPlayer.count" ], 1 do
-      post rooms_path, params: { room: { total_rounds: 5, round_duration_seconds: 45 } }
-    end
-
-    assert_redirected_to room_path(Room.last)
-  end
-
-  test "um usuário convidado consegue entrar numa sala existente" do
-    sala = criar_sala(host: users(:fernanda))
-    sign_in User.create_guest!
-
-    assert_difference "RoomPlayer.count", 1 do
-      post join_room_path, params: { code: sala.code }
-    end
-
-    assert_redirected_to room_path(sala)
-  end
-
   private
 
   def criar_sala(host:, status: :waiting, **attrs)
@@ -362,7 +349,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
 
   def adicionar_jogadores(sala, count)
     Array.new(count) do |i|
-      user = User.create!(email: "extra_#{SecureRandom.hex(4)}_#{i}@example.com", password: "password123")
+      user = User.create_player!
       adicionar_jogador(sala, user)
       user
     end
@@ -372,7 +359,7 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
   def iniciar_sala_em_andamento(jogadores:, total_rounds: 5)
     sala = criar_sala(host: users(:fernanda), total_rounds: total_rounds)
     adicionar_jogadores(sala, jogadores - 1)
-    sign_in users(:fernanda)
+    sign_in_as users(:fernanda)
 
     post start_room_path(sala)
     sala.reload

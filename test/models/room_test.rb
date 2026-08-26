@@ -126,7 +126,7 @@ class RoomTest < ActiveSupport::TestCase
   private
 
   def create_users(count)
-    Array.new(count) { |i| User.create!(email: "jogador_extra_#{i}_#{SecureRandom.hex(4)}@example.com", password: "password123") }
+    Array.new(count) { User.create_player! }
   end
 
   # Sala já em andamento, host + N-1 jogadores extras, via caminho real
