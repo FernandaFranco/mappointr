@@ -1,7 +1,4 @@
 class GamesController < ApplicationController
-  # Requer login para jogar
-  before_action :authenticate_user!
-
   # GET /play/new (ou /)
   # Inicia uma nova rodada: sorteia país (considerando a dificuldade
   # sugerida para o jogador) e mostra o mapa

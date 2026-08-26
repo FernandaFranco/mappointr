@@ -1,59 +1,54 @@
 require "test_helper"
 
 class StatsControllerTest < ActionDispatch::IntegrationTest
-  test "GET /stats sem estar logado redireciona para a tela de login" do
+  test "GET /stats é pública, sem precisar de sign_in_as" do
     get stats_path
 
-    assert_redirected_to new_user_session_path
+    assert_response :success
   end
 
-  test "GET /stats logado mostra as estatísticas de um usuário só com acerto exato" do
-    sign_in users(:fernanda)
+  # atlantis tem 3 game_rounds nas fixtures: acerto (correct), quase (close),
+  # erro (wrong) — 1 de cada, então cada percentual é 33.3% e a distância
+  # média é (0 + 332 + 14000) / 3 = 4777.3.
+  test "GET /stats mostra o agregado por país" do
+    get stats_path
+
+    assert_response :success
+    row = country_row("Atlântida")
+    assert_equal "3", row_cell(row, 1)
+    assert_equal "33.3%", row_cell(row, 2)
+    assert_equal "33.3%", row_cell(row, 3)
+    assert_equal "33.3%", row_cell(row, 4)
+    assert_equal "4,777.3 km", row_cell(row, 5)
+  end
+
+  test "GET /stats não lista país sem nenhuma jogada" do
+    get stats_path
+
+    assert_response :success
+    assert_nil country_row("Edênia", allow_missing: true)
+  end
+
+  test "GET /stats mostra o estado vazio quando não há nenhuma jogada no banco" do
+    GameRound.delete_all
 
     get stats_path
 
     assert_response :success
-    assert_equal "1", stat_value("Rodadas jogadas")
-    assert_equal "1", stat_value("Acertos exatos")
-    assert_equal "0", stat_value("Quase acertos")
-    assert_equal "0", stat_value("Erros")
-    assert_equal "100.0%", stat_value("Taxa de acerto exato")
-    assert_equal "100.0%", stat_value("Taxa de sucesso")
-  end
-
-  test "GET /stats logado mostra as estatísticas de um usuário com quase acerto e erro" do
-    sign_in users(:visitante)
-
-    get stats_path
-
-    assert_response :success
-    assert_equal "2", stat_value("Rodadas jogadas")
-    assert_equal "0", stat_value("Acertos exatos")
-    assert_equal "1", stat_value("Quase acertos")
-    assert_equal "1", stat_value("Erros")
-    assert_equal "0.0%", stat_value("Taxa de acerto exato")
-    assert_equal "50.0%", stat_value("Taxa de sucesso")
-  end
-
-  test "GET /stats logado mostra o estado vazio para usuário sem rodadas" do
-    sign_in users(:novato)
-
-    get stats_path
-
-    assert_response :success
-    assert_match "Você ainda não jogou nenhuma rodada.", response.body
+    assert_match "Ninguém jogou nenhuma rodada ainda.", response.body
     assert_select "a[href=?]", new_game_path, text: "Jogar agora"
   end
 
   private
 
-  # Extrai o valor numérico de um card de estatística a partir do seu rótulo,
-  # navegando pela estrutura real da view em vez de casar strings no HTML bruto.
-  def stat_value(label)
+  def country_row(name_pt, allow_missing: false)
     doc = Nokogiri::HTML5.parse(response.body)
-    label_node = doc.css("div.text-sm").find { |node| node.text.strip == label }
-    assert label_node, "não encontrei um card com o rótulo #{label.inspect}"
+    row = doc.css("tbody tr").find { |tr| tr.at_css("td")&.text&.strip == name_pt }
+    assert row, "não encontrei uma linha para #{name_pt.inspect}" unless allow_missing
+    row
+  end
 
-    label_node.parent.css("div.text-2xl").first.text.strip
+  def row_cell(row, index)
+    row.css("td")[index].text.strip
   end
 end

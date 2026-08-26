@@ -1,51 +1,46 @@
-<%# View de estatísticas do jogador logado %>
-<%# Variáveis: @user %>
+<%# View de estatísticas globais, por país %>
+<%# Variáveis: @country_stats %>
 
-<div class="w-full max-w-2xl mx-auto">
+<div class="w-full max-w-4xl mx-auto">
   <div class="bg-white rounded-lg shadow-lg p-6">
-    <h1 class="text-2xl font-bold text-gray-900 mb-6">Minhas estatísticas</h1>
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Estatísticas globais</h1>
 
-    <% if @user.total_games.zero? %>
+    <% if @country_stats.empty? %>
       <div class="text-center py-8 text-gray-500">
-        <p class="mb-4">Você ainda não jogou nenhuma rodada.</p>
+        <p class="mb-4">Ninguém jogou nenhuma rodada ainda.</p>
         <%= link_to "Jogar agora", new_game_path,
             class: "inline-block bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150" %>
       </div>
     <% else %>
-      <div class="grid grid-cols-2 gap-4">
-        <div class="bg-gray-50 rounded-lg p-4">
-          <div class="text-sm text-gray-500">Rodadas jogadas</div>
-          <div class="text-2xl font-bold text-gray-800"><%= @user.total_games %></div>
-        </div>
-
-        <div class="bg-gray-50 rounded-lg p-4">
-          <div class="text-sm text-gray-500">Acertos exatos</div>
-          <div class="text-2xl font-bold text-green-600"><%= @user.correct_games %></div>
-        </div>
-
-        <div class="bg-gray-50 rounded-lg p-4">
-          <div class="text-sm text-gray-500">Quase acertos</div>
-          <div class="text-2xl font-bold text-yellow-600"><%= @user.close_games %></div>
-        </div>
-
-        <div class="bg-gray-50 rounded-lg p-4">
-          <div class="text-sm text-gray-500">Erros</div>
-          <div class="text-2xl font-bold text-red-600"><%= @user.wrong_games %></div>
-        </div>
-
-        <div class="bg-gray-50 rounded-lg p-4">
-          <div class="text-sm text-gray-500">Taxa de acerto exato</div>
-          <div class="text-2xl font-bold text-gray-800"><%= @user.accuracy_percentage %>%</div>
-        </div>
-
-        <div class="bg-gray-50 rounded-lg p-4">
-          <div class="text-sm text-gray-500">Taxa de sucesso</div>
-          <div class="text-2xl font-bold text-gray-800"><%= @user.success_percentage %>%</div>
-        </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="border-b border-gray-200 text-sm text-gray-500">
+              <th class="py-2 pr-4">País</th>
+              <th class="py-2 px-4 text-right">Tentativas</th>
+              <th class="py-2 px-4 text-right">% acerto</th>
+              <th class="py-2 px-4 text-right">% quase</th>
+              <th class="py-2 px-4 text-right">% erro</th>
+              <th class="py-2 pl-4 text-right">Distância média</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @country_stats.each do |stat| %>
+              <tr class="border-b border-gray-100">
+                <td class="py-2 pr-4 font-medium text-gray-800"><%= stat[:country].name_pt %></td>
+                <td class="py-2 px-4 text-right"><%= stat[:total] %></td>
+                <td class="py-2 px-4 text-right text-green-600"><%= stat[:correct_percentage] %>%</td>
+                <td class="py-2 px-4 text-right text-yellow-600"><%= stat[:close_percentage] %>%</td>
+                <td class="py-2 px-4 text-right text-red-600"><%= stat[:wrong_percentage] %>%</td>
+                <td class="py-2 pl-4 text-right"><%= number_with_delimiter(stat[:avg_distance]) %> km</td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
       </div>
 
       <div class="mt-8">
-        <%= link_to "Jogar de novo", new_game_path,
+        <%= link_to "Jogar agora", new_game_path,
             class: "block w-full text-center bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-150" %>
       </div>
     <% end %>

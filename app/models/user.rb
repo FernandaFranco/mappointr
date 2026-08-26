@@ -1,37 +1,17 @@
 class User < ApplicationRecord
-  # Include default devise modules. Others available are:
-  # :confirmable, :lockable, :timeoutable, :trackable and :omniauthable
-  devise :database_authenticatable, :registerable,
-         :recoverable, :rememberable, :validatable
-
   # Relacionamentos
   has_many :game_rounds, dependent: :destroy
   has_many :room_players, dependent: :destroy
   has_many :rooms, through: :room_players
 
-  scope :guest, -> { where(guest: true) }
+  validates :display_name, presence: true
 
-  # Nome mostrado nas salas (lista de jogadores, placar, popups do mapa).
-  # Contas reais mostram o e-mail, como sempre mostraram; convidados não têm
-  # e-mail de verdade (é um endereço sintético só pra satisfazer Devise), daí
-  # o apelido gerado em create_guest!.
-  def display_name
-    self[:display_name].presence || email
-  end
-
-  # Cria uma conta "de visitante": e-mail e senha sintéticos (só existem pra
-  # satisfazer as validações do Devise — ninguém faz login de volta com eles),
-  # sinalizada com guest: true. Reaproveita current_user/GameRound/RoomPlayer
-  # sem alterar nenhuma associação: pro resto do app, é só mais um User.
-  def self.create_guest!
-    token = SecureRandom.hex(8)
-
-    create!(
-      email: "guest-#{token}@guest.mappointr.local",
-      password: SecureRandom.hex(12),
-      guest: true,
-      display_name: "Visitante #{rand(1000..9999)}"
-    )
+  # Cria um jogador novo com um apelido gerado. Não existe conta "de
+  # verdade" nem login — session[:user_id] (ver ApplicationController) é a
+  # única forma de identidade. Reaproveita current_user/GameRound/RoomPlayer
+  # sem alterar nenhuma associação.
+  def self.create_player!
+    create!(display_name: "Visitante #{rand(1000..9999)}")
   end
 
   # Métodos de estatísticas do usuário

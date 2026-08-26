@@ -1,9 +1,0 @@
-<% if resource.errors.any? %>
-  <div class="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg" data-turbo-cache="false">
-    <ul class="text-sm text-red-700 space-y-1">
-      <% resource.errors.full_messages.each do |message| %>
-        <li>• <%= message %></li>
-      <% end %>
-    </ul>
-  </div>
-<% end %>

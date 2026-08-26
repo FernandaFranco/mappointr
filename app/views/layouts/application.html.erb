@@ -33,26 +33,11 @@
             class: "font-bold text-gray-900 text-lg hover:text-red-600 transition" %>
 
         <div class="flex items-center gap-4">
-          <% if user_signed_in? %>
-            <%= link_to "Jogar com amigos", new_room_path,
-                class: "text-sm text-gray-600 hover:text-red-600 transition" %>
-            <% unless current_user.guest? %>
-              <%= link_to "Minhas estatísticas", stats_path,
-                  class: "text-sm text-gray-600 hover:text-red-600 transition" %>
-            <% end %>
-            <% if current_user.guest? %>
-              <%= link_to "Criar conta", new_guest_claim_path,
-                  class: "text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition" %>
-            <% end %>
-            <span class="text-sm text-gray-500 hidden sm:block"><%= current_user.display_name %></span>
-            <%= button_to "Sair", destroy_user_session_path, method: :delete,
-                class: "text-sm text-gray-600 hover:text-red-600 transition cursor-pointer" %>
-          <% else %>
-            <%= link_to "Entrar", new_user_session_path,
-                class: "text-sm text-gray-600 hover:text-red-600 transition" %>
-            <%= link_to "Criar conta", new_user_registration_path,
-                class: "text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition" %>
-          <% end %>
+          <%= link_to "Jogar com amigos", new_room_path,
+              class: "text-sm text-gray-600 hover:text-red-600 transition" %>
+          <%= link_to "Estatísticas", stats_path,
+              class: "text-sm text-gray-600 hover:text-red-600 transition" %>
+          <span class="text-sm text-gray-500 hidden sm:block"><%= current_user.display_name %></span>
         </div>
       </div>
     </nav>
