@@ -46,7 +46,7 @@ export default class extends Controller {
     }
   }
 
-  initializeMap() {
+  async initializeMap() {
     const centroidCoords = [ this.centroidLatValue, this.centroidLngValue ]
 
     this.map = L.map(this.element, {
@@ -59,11 +59,18 @@ export default class extends Controller {
     // "Oceano": cor de fundo do próprio container, por baixo dos países
     this.element.style.backgroundColor = "#eff6ff"
 
-    // Fundo com todo país do mundo — não bloqueia nada aqui, só aparece
-    // assim que a resposta chegar.
-    loadWorldBoundaries()
-      .then((boundaries) => drawWorldBoundaries(this.map, boundaries))
-      .catch((e) => console.error("Erro ao carregar os países:", e))
+    // Fundo com todo país do mundo. Precisa entrar ANTES do destaque do
+    // país (não só "em paralelo") — os dois usam o mesmo overlayPane/SVG
+    // renderer, e quem entra por último fica visualmente por cima. Sem
+    // esperar aqui, essa camada chegaria depois (fetch é assíncrono) e
+    // cobriria o verde do país destacado assim que a rede respondesse.
+    // Falha aberta: se a rede cair, o resto do mapa desenha igual.
+    try {
+      const boundaries = await loadWorldBoundaries()
+      drawWorldBoundaries(this.map, boundaries)
+    } catch (e) {
+      console.error("Erro ao carregar os países:", e)
+    }
 
     let bounds = this.drawCountryBoundary()
     bounds = this.drawGuesses(bounds)

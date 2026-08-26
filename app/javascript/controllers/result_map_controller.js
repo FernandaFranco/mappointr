@@ -50,7 +50,7 @@ export default class extends Controller {
     }
   }
 
-  initializeMap() {
+  async initializeMap() {
     const guessCoords = [this.guessedLatValue, this.guessedLngValue]
     const nearestCoords = [this.nearestLatValue, this.nearestLngValue]
     const centroidCoords = [this.centroidLatValue, this.centroidLngValue]
@@ -66,11 +66,20 @@ export default class extends Controller {
     // "Oceano": cor de fundo do próprio container, por baixo dos países
     this.element.style.backgroundColor = "#eff6ff"
 
-    // Fundo com todo país do mundo — não bloqueia nada nesta página (não
-    // tem placeholder aqui), só aparece assim que a resposta chegar.
-    loadWorldBoundaries()
-      .then((boundaries) => drawWorldBoundaries(this.map, boundaries))
-      .catch((e) => console.error("Erro ao carregar os países:", e))
+    // Fundo com todo país do mundo. Importante desenhar ANTES do destaque do
+    // país e dos pontos de chute (não só "em paralelo"): o polígono do país
+    // e os pontos usam o mesmo overlayPane/renderer SVG que essa camada de
+    // fundo, então quem for adicionado por último fica por cima — se essa
+    // camada entrasse depois (ex: só um .then() sem esperar), ela cobriria
+    // o destaque verde e os pontos assim que a rede respondesse, mesmo eles
+    // já estando na tela havia um tempo. Falha aberta: se a rede cair, o
+    // resto do mapa (o que realmente importa pro jogo) desenha igual.
+    try {
+      const boundaries = await loadWorldBoundaries()
+      drawWorldBoundaries(this.map, boundaries)
+    } catch (e) {
+      console.error("Erro ao carregar os países:", e)
+    }
 
     // Desenha o polígono do país
     if (this.boundaryValue) {
