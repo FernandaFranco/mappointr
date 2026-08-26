@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { whenLeafletReady } from "leaflet_ready"
+import { loadWorldBoundaries, drawWorldBoundaries } from "world_boundaries"
 
 /**
  * ResultMapController - Mostra o mapa de resultado
@@ -62,11 +63,14 @@ export default class extends Controller {
       maxZoom: 10
     })
 
-    // Tile layer
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-      subdomains: "abcd"
-    }).addTo(this.map)
+    // "Oceano": cor de fundo do próprio container, por baixo dos países
+    this.element.style.backgroundColor = "#eff6ff"
+
+    // Fundo com todo país do mundo — não bloqueia nada nesta página (não
+    // tem placeholder aqui), só aparece assim que a resposta chegar.
+    loadWorldBoundaries()
+      .then((boundaries) => drawWorldBoundaries(this.map, boundaries))
+      .catch((e) => console.error("Erro ao carregar os países:", e))
 
     // Desenha o polígono do país
     if (this.boundaryValue) {

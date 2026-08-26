@@ -366,6 +366,28 @@ namespace :countries do
     puts "Importados: #{imported}"
     puts "Ignorados: #{skipped}"
     puts "Total no banco: #{Country.count}"
+
+    Rake::Task["countries:export_boundaries"].invoke
+  end
+
+  desc "Exporta as fronteiras de todos os países como um GeoJSON só, pro mapa desenhar o mundo sem depender de tile server externo"
+  task export_boundaries: :environment do
+    # Sem properties nas features: essa camada é só o "fundo" do mapa (mesmo
+    # cinza pra todo país) — nome/id de cada país nunca deveria vazar pro
+    # cliente aqui, ou um jogador curioso inspecionando a resposta da rede
+    # descobriria o país sorteado antes de chutar.
+    features = Country.pluck(:id).map do |id|
+      geometry = Country.connection.select_value(<<~SQL)
+        SELECT ST_AsGeoJSON(boundary::geometry, 4) FROM countries WHERE id = #{id}
+      SQL
+      { "type" => "Feature", "properties" => {}, "geometry" => JSON.parse(geometry) }
+    end
+
+    geojson = { "type" => "FeatureCollection", "features" => features }
+    path = Rails.root.join("public/world_boundaries.geojson")
+    File.write(path, geojson.to_json)
+
+    puts "Exportado #{features.length} países pra #{path} (#{File.size(path) / 1024}KB)"
   end
 
   desc "Lista países no banco com estatísticas"

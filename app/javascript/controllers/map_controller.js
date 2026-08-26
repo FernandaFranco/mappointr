@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { whenLeafletReady } from "leaflet_ready"
+import { loadWorldBoundaries, drawWorldBoundaries } from "world_boundaries"
 
 /**
  * MapController - Controla o mapa interativo do jogo
@@ -36,11 +37,6 @@ export default class extends Controller {
   }
 
   initializeMap() {
-    // Remove o placeholder se existir
-    if (this.hasPlaceholderTarget) {
-      this.placeholderTarget.remove()
-    }
-
     // Cria o mapa centrado no mundo (view global)
     this.map = L.map(this.element, {
       center: [20, 0],      // Centro do mundo (um pouco ao norte do equador)
@@ -50,14 +46,8 @@ export default class extends Controller {
       worldCopyJump: true,  // Permite scroll horizontal infinito
     })
 
-    // Adiciona o tile layer (mapa base)
-    // Usando CartoDB Positron - mapa clean sem muitos detalhes
-    // IMPORTANTE: sem fronteiras visíveis!
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: "abcd",
-      maxZoom: 20
-    }).addTo(this.map)
+    // "Oceano": cor de fundo do próprio container, por baixo dos países
+    this.element.style.backgroundColor = "#eff6ff"
 
     // Adiciona listener de clique no mapa
     this.map.on("click", this.handleMapClick.bind(this))
@@ -69,6 +59,18 @@ export default class extends Controller {
     setTimeout(() => {
       this.map.invalidateSize()
     }, 100)
+
+    // O placeholder "Carregando mapa..." só sai quando os países terminarem
+    // de desenhar — antes disso o mapa é só um retângulo azul vazio, o que
+    // pareceria quebrado. Em caso de falha (rede fora do ar), remove o
+    // placeholder de qualquer jeito: clicar em qualquer lugar do oceano
+    // ainda registra um chute válido, o jogo não depende dessa camada.
+    loadWorldBoundaries()
+      .then((boundaries) => drawWorldBoundaries(this.map, boundaries))
+      .catch((e) => console.error("Erro ao carregar os países:", e))
+      .finally(() => {
+        if (this.hasPlaceholderTarget) this.placeholderTarget.remove()
+      })
 
     console.log("Mapa inicializado!")
   }

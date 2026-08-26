@@ -28,6 +28,15 @@ class GamesTest < ApplicationSystemTestCase
     # fixtures acerto/quase/erro dão 3 chutes em atlantis, então
     # GameRound.guess_points tem o que desenhar.
     assert_selector "path.leaflet-interactive", minimum: 2
+
+    # public/world_boundaries.geojson é estático (não depende do banco de
+    # teste com países fictícios) — sempre tem os ~177 países de verdade, e
+    # interactive: false tira essa camada do seletor acima, daí precisar de
+    # um className próprio pra provar que ela também renderizou de verdade.
+    # O mapa fica bem fechado nesse teste (fitBounds no país fictício +
+    # pontos de chute), então só os países cujo bounding box cruza essa
+    # janela pequena ficam visíveis — não os ~177 inteiros.
+    assert_selector "path.world-boundary", minimum: 10
   end
 
   # edenia não tem game_rounds nas fixtures: esta é a primeira rodada desse
