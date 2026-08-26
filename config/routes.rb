@@ -1,12 +1,9 @@
 Rails.application.routes.draw do
-  devise_for :users
-
-  # Login como visitante, sem cadastro — ver GuestSessionsController
-  post "guest_session", to: "guest_sessions#create"
-
-  # "Reivindicar" a conta de visitante como uma conta de verdade, mantendo o
-  # histórico da sessão — ver GuestClaimsController
-  resource :guest_claim, only: [ :new, :create ]
+  # Sem login: ApplicationController#set_current_user cria um jogador na
+  # primeira request. Só em teste, pra sistema poder fixar qual jogador uma
+  # sessão de browser representa (Capybara não compartilha memória com o
+  # processo de teste, então não dá pra escrever direto em `session`).
+  get "test_sign_in/:user_id", to: "test_sign_ins#create", as: :test_sign_in if Rails.env.test?
 
   # Rotas do jogo
   # GET  /play     → Inicia nova rodada (sorteia país, mostra mapa)
@@ -14,7 +11,7 @@ Rails.application.routes.draw do
   # GET  /play/:id → Mostra resultado de uma rodada específica
   resources :games, path: "play", only: [ :new, :create, :show ]
 
-  # Estatísticas do jogador logado
+  # Estatísticas globais por país, públicas
   resource :stats, only: :show
 
   # Salas multiplayer em tempo real

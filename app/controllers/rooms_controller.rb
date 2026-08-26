@@ -1,5 +1,4 @@
 class RoomsController < ApplicationController
-  before_action :authenticate_user!
   before_action :set_room, only: [ :show, :start, :advance ]
   before_action :expire_if_stale!, only: [ :show ]
   before_action :require_membership!, only: [ :show, :start, :advance ]

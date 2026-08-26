@@ -1,5 +1,4 @@
 class RoomGuessesController < ApplicationController
-  before_action :authenticate_user!
   before_action :set_room
 
   # POST /rooms/:room_id/guesses
