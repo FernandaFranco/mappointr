@@ -7,9 +7,7 @@ class GamesTest < ApplicationSystemTestCase
     visit new_game_path
     assert_selector "#map-container"
 
-    find("#map-container").click
-
-    assert_text "Suas estatísticas"
+    click_map_and_expect "Suas estatísticas"
     assert_text "Tempo de resposta"
   end
 
@@ -58,9 +56,8 @@ class GamesTest < ApplicationSystemTestCase
     # sem esperar o placeholder sumir, o clique pode chegar antes do Leaflet
     # ter inicializado de verdade e não registrar chute nenhum.
     assert_no_text "Carregando mapa..."
-    find("#map-container").click
 
-    assert_text "Suas estatísticas"
+    click_map_and_expect "Suas estatísticas"
   end
 
   test "visitante consegue reivindicar a conta como uma conta de verdade e mantém o histórico" do
@@ -69,8 +66,7 @@ class GamesTest < ApplicationSystemTestCase
     assert_text "Sair"
 
     assert_no_text "Carregando mapa..."
-    find("#map-container").click
-    assert_text "Suas estatísticas"
+    click_map_and_expect "Suas estatísticas"
 
     click_on "Criar conta"
     assert_selector "h2", text: "Criar conta"
@@ -86,6 +82,14 @@ class GamesTest < ApplicationSystemTestCase
     assert_text "Conta criada! Seu histórico de jogo foi mantido."
     assert_text "visitante_convertido@example.com"
     assert_no_text "Visitante "
+
+    # O redirect pós-claim cai de novo em games#new (um país novo sorteado),
+    # que inicializa o Leaflet e ainda pode estar mexendo no DOM (carregando
+    # tiles) quando o próximo clique dispara — mesma corrida de "Node with
+    # given id does not belong to the document" já vista em outros lugares
+    # deste arquivo. Espera o placeholder sumir antes de clicar em qualquer
+    # coisa, como já se faz em todo outro ponto que chega nessa página.
+    assert_no_text "Carregando mapa..."
 
     click_on "Minhas estatísticas"
     assert_no_text "Você ainda não jogou nenhuma rodada."

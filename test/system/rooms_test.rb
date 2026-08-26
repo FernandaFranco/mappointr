@@ -75,20 +75,29 @@ class RoomsTest < ApplicationSystemTestCase
     end
 
     # A guest nunca navegou de novo: a troca da sala de espera pra rodada
-    # só pode ter chegado pelo broadcast_replace_to de #room_body.
+    # só pode ter chegado pelo broadcast_replace_to de #room_body. Espera o
+    # placeholder sumir antes de clicar (dá tempo do Leaflet pelo menos
+    # existir), mas quem realmente evita o "Node with given id does not
+    # belong to the document" é click_map_and_expect — ver comentário na
+    # classe-pai: o Leaflet segue mexendo no DOM (tiles chegando aos poucos)
+    # mesmo depois do placeholder sumir, e isso reproduz até fora de
+    # contexto de broadcast, então esperar mais não bastava sozinho.
     using_session(:guest) do
       assert_text "Rodada 1 de 1"
-      find("#map-container").click
-      assert_text(/Chute registrado|Resultado da rodada/)
+      assert_no_text "Carregando mapa..."
+      click_map_and_expect(/Chute registrado|Resultado da rodada/)
     end
 
     using_session(:host) do
-      find("#map-container").click
-      assert_text "Resultado da rodada 1"
-      # Prova que o novo Stimulus controller (room-result-map) realmente
-      # inicializa num navegador real, sem erro de JS — os testes de
-      # model/controller não conseguem verificar isso.
-      assert_selector "[data-controller='room-result-map']"
+      assert_no_text "Carregando mapa..."
+      retry_on_stale_node do
+        find("#map-container").click unless page.has_text?("Resultado da rodada 1")
+        assert_text "Resultado da rodada 1"
+        # Prova que o novo Stimulus controller (room-result-map) realmente
+        # inicializa num navegador real, sem erro de JS — os testes de
+        # model/controller não conseguem verificar isso.
+        assert_selector "[data-controller='room-result-map']"
+      end
     end
 
     # A guest não recarregou — vê o resultado só porque o último chute
@@ -243,9 +252,9 @@ class RoomsTest < ApplicationSystemTestCase
 
     visit room_path(sala)
     assert_text "Rodada 1 de 1"
+    assert_no_text "Carregando mapa..."
 
-    find("#map-container").click
-    assert_text(/Chute registrado|Resultado da rodada/)
+    click_map_and_expect(/Chute registrado|Resultado da rodada/)
 
     # fernanda (host) ainda não chutou — só o convidado chutou até aqui —
     # então a rodada não deveria ter finalizado sozinha.
