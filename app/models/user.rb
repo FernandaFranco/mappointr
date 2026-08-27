@@ -4,7 +4,12 @@ class User < ApplicationRecord
   has_many :room_players, dependent: :destroy
   has_many :rooms, through: :room_players
 
-  validates :display_name, presence: true
+  before_validation :strip_display_name
+
+  # display_name é escolhido pelo próprio jogador (ver RoomsController), não
+  # mais só gerado — daí o limite de tamanho, pra não quebrar o layout das
+  # listas de jogadores em sala.
+  validates :display_name, presence: true, length: { maximum: 30 }
 
   # Cria um jogador novo com um apelido gerado. Não existe conta "de
   # verdade" nem login — session[:user_id] (ver ApplicationController) é a
@@ -74,5 +79,11 @@ class User < ApplicationRecord
     else
       :easy
     end
+  end
+
+  private
+
+  def strip_display_name
+    self.display_name = display_name.strip if display_name.is_a?(String)
   end
 end

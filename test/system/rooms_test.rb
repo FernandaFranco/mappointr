@@ -46,6 +46,11 @@ class RoomsTest < ApplicationSystemTestCase
       sign_in_as(users(:fernanda))
       visit new_room_path
 
+      # Cada jogador escolhe o próprio apelido ao entrar na sala — não usa
+      # mais o display_name gerado automaticamente (ver User.create_player!).
+      # within porque "Seu nome" aparece em ambos os cards desta página
+      # (criar sala e entrar com código) — sem escopo, fill_in é ambíguo.
+      within("#create-room-card") { fill_in "Seu nome", with: "Anfitriã Aventureira" }
       fill_in "Número de rodadas", with: 1
       click_on "Criar sala"
 
@@ -59,6 +64,7 @@ class RoomsTest < ApplicationSystemTestCase
       sign_in_as(users(:visitante))
       visit new_room_path
 
+      within("#join-room-card") { fill_in "Seu nome", with: "Convidada Curiosa" }
       fill_in "Ex: VT4SHF", with: room_code
       click_on "Entrar"
 
@@ -67,9 +73,11 @@ class RoomsTest < ApplicationSystemTestCase
     end
 
     # A lista de jogadores do host deve atualizar sozinha via broadcast —
-    # sem recarregar a página nem navegar de novo nesta sessão.
+    # sem recarregar a página nem navegar de novo nesta sessão. O apelido
+    # escolhido pela guest (não o gerado automaticamente) prova que
+    # display_name foi atualizado antes dela entrar na sala.
     using_session(:host) do
-      assert_text users(:visitante).display_name
+      assert_text "Convidada Curiosa"
       click_on "Iniciar jogo"
       assert_text "Rodada 1 de 1"
     end

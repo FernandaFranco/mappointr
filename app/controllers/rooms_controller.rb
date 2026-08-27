@@ -11,6 +11,8 @@ class RoomsController < ApplicationController
   # POST /rooms
   # Cria a sala e já entra nela como o primeiro jogador (host)
   def create
+    update_display_name!
+
     @room = Room.new(room_params)
     @room.host = current_user
 
@@ -25,6 +27,8 @@ class RoomsController < ApplicationController
   # POST /rooms/join
   # Entra em uma sala existente a partir do código compartilhado
   def join
+    update_display_name!
+
     room = Room.find_by(code: params[:code].to_s.strip.upcase)
 
     if room.nil?
@@ -103,6 +107,16 @@ class RoomsController < ApplicationController
     permitted = params.require(:room).permit(:total_rounds, :round_duration_seconds, :difficulty)
     permitted[:difficulty] = permitted[:difficulty].presence
     permitted
+  end
+
+  # Deixa o jogador escolher um apelido ao entrar numa sala (a única hora em
+  # que display_name aparece pra outras pessoas, ver rooms/_player_list e
+  # afins). Ignora silenciosamente se vazio ou inválido (ex: passou de 30
+  # caracteres) — um apelido ruim não deveria travar criar/entrar na sala.
+  def update_display_name!
+    return if params[:display_name].blank?
+
+    current_user.update(display_name: params[:display_name])
   end
 
   # Substitui a sala de espera inteira (não só a lista de jogadores): quem

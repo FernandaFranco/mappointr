@@ -34,6 +34,25 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to room_path(Room.last)
   end
 
+  test "POST /rooms com display_name atualiza o apelido do jogador antes de criar a sala" do
+    sign_in_as users(:fernanda)
+
+    post rooms_path, params: { display_name: "Capitã Fernanda", room: { total_rounds: 5, round_duration_seconds: 45 } }
+
+    assert_equal "Capitã Fernanda", users(:fernanda).reload.display_name
+  end
+
+  test "POST /rooms com display_name inválido (muito longo) é ignorado, sem travar a criação da sala" do
+    sign_in_as users(:fernanda)
+    nome_original = users(:fernanda).display_name
+
+    assert_difference "Room.count", 1 do
+      post rooms_path, params: { display_name: "a" * 31, room: { total_rounds: 5, round_duration_seconds: 45 } }
+    end
+
+    assert_equal nome_original, users(:fernanda).reload.display_name
+  end
+
   # --- join ---
 
   test "POST /rooms/join com código válido entra na sala" do
@@ -46,6 +65,15 @@ class RoomsControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to room_path(sala)
     assert sala.room_players.exists?(user: users(:visitante))
+  end
+
+  test "POST /rooms/join com display_name atualiza o apelido do jogador antes de entrar na sala" do
+    sala = criar_sala(host: users(:fernanda))
+    sign_in_as users(:visitante)
+
+    post join_room_path, params: { display_name: "Convidada Especial", code: sala.code }
+
+    assert_equal "Convidada Especial", users(:visitante).reload.display_name
   end
 
   test "POST /rooms/join aceita o código em minúsculas" do

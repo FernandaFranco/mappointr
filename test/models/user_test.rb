@@ -139,6 +139,26 @@ class UserTest < ActiveSupport::TestCase
     assert_match(/\AVisitante \d+\z/, jogador.display_name)
   end
 
+  test "display_name não pode passar de 30 caracteres" do
+    user = User.new(display_name: "a" * 31)
+
+    assert_not user.valid?
+    assert_includes user.errors[:display_name], "is too long (maximum is 30 characters)"
+  end
+
+  test "display_name com espaços nas pontas é aparado antes de validar" do
+    user = User.create!(display_name: "  Fernanda  ")
+
+    assert_equal "Fernanda", user.display_name
+  end
+
+  test "display_name só com espaços é tratado como em branco" do
+    user = User.new(display_name: "   ")
+
+    assert_not user.valid?
+    assert_includes user.errors[:display_name], "can't be blank"
+  end
+
   private
 
   # Cria rodadas de jogo para +user+ com os resultados dados, em ordem
