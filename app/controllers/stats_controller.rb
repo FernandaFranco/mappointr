@@ -1,12 +1,11 @@
 class StatsController < ApplicationController
   # GET /stats
-  # Mapa-múndi interativo: países já jogados aparecem clicáveis. Escolher um
-  # deles carrega suas estatísticas + pontos de chute via GET /stats/:id
-  # (#country) dentro de um turbo-frame, sem recarregar a página. Pública —
-  # não depende de current_user.
+  # Mapa-múndi interativo: todo país aparece clicável, jogado ou não.
+  # Escolher um deles carrega suas estatísticas + pontos de chute via GET
+  # /stats/:id (#country) dentro de um turbo-frame, sem recarregar a página.
+  # Pública — não depende de current_user.
   def show
-    @played_countries = Country.where(id: GameRound.distinct.pluck(:country_id))
-      .pluck(:id, :name_pt, Arel.sql("ST_AsGeoJSON(boundary::geometry, 4)"))
+    @countries = Country.pluck(:id, :name_pt, Arel.sql("ST_AsGeoJSON(boundary::geometry, 4)"))
       .map { |id, name_pt, boundary| { id: id, name_pt: name_pt, boundary: boundary } }
   end
 

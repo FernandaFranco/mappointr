@@ -1,31 +1,22 @@
 <%# View de estatísticas globais: mapa-múndi interativo %>
-<%# Variáveis: @played_countries %>
+<%# Variáveis: @countries %>
 
 <div class="w-full max-w-4xl mx-auto">
   <div class="bg-white rounded-lg shadow-lg p-6">
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Estatísticas globais</h1>
+    <p class="text-sm text-gray-500 mb-4">
+      Clique em qualquer país no mapa para ver as estatísticas dele.
+    </p>
 
-    <% if @played_countries.empty? %>
-      <div class="text-center py-8 text-gray-500">
-        <p class="mb-4">Ninguém jogou nenhuma rodada ainda.</p>
-        <%= link_to "Jogar agora", new_game_path,
-            class: "inline-block bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition duration-150" %>
-      </div>
-    <% else %>
-      <p class="text-sm text-gray-500 mb-4">
-        Clique em um país destacado no mapa para ver as estatísticas dele.
-      </p>
+    <div id="stats-map-container"
+         class="w-full h-96 bg-gray-200 rounded-lg"
+         data-controller="stats-map"
+         data-stats-map-countries-value="<%= @countries.to_json %>"
+         data-action="country-guess-points:loaded@window->stats-map#drawGuesses">
+    </div>
 
-      <div id="stats-map-container"
-           class="w-full h-96 bg-gray-200 rounded-lg"
-           data-controller="stats-map"
-           data-stats-map-countries-value="<%= @played_countries.to_json %>"
-           data-action="country-guess-points:loaded@window->stats-map#drawGuesses">
-      </div>
-
-      <%= turbo_frame_tag "country-stats-panel" do %>
-        <p class="text-sm text-gray-400 mt-4">Nenhum país selecionado ainda.</p>
-      <% end %>
+    <%= turbo_frame_tag "country-stats-panel" do %>
+      <p class="text-sm text-gray-400 mt-4">Nenhum país selecionado ainda.</p>
     <% end %>
   </div>
 </div>

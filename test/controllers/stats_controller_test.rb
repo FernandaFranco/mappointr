@@ -10,31 +10,31 @@ class StatsControllerTest < ActionDispatch::IntegrationTest
   end
 
   # atlantis tem 3 game_rounds nas fixtures (acerto, quase, erro); edenia não
-  # tem nenhum — só atlantis deve aparecer entre os países jogados, com o
-  # boundary embutido pro mapa desenhar o polígono clicável.
-  test "GET /stats inclui só países já jogados, com o boundary embutido" do
+  # tem nenhum — os dois devem aparecer, com o boundary embutido pro mapa
+  # desenhar o polígono clicável de cada um (todo país é clicável, jogado
+  # ou não).
+  test "GET /stats inclui todos os países, jogados ou não, com o boundary embutido" do
     get stats_path
 
     assert_response :success
-    played = extract_played_countries
-    played_ids = played.map { |c| c["id"] }
-    assert_includes played_ids, countries(:atlantis).id
-    assert_not_includes played_ids, countries(:edenia).id
+    all_countries = extract_countries
+    country_ids = all_countries.map { |c| c["id"] }
+    assert_includes country_ids, countries(:atlantis).id
+    assert_includes country_ids, countries(:edenia).id
 
-    atlantis_entry = played.find { |c| c["id"] == countries(:atlantis).id }
+    atlantis_entry = all_countries.find { |c| c["id"] == countries(:atlantis).id }
     assert_equal "Atlântida", atlantis_entry["name_pt"]
     assert atlantis_entry["boundary"].present?
     assert JSON.parse(atlantis_entry["boundary"]).present?, "boundary deveria ser GeoJSON válido"
   end
 
-  test "GET /stats mostra o estado vazio quando não há nenhuma jogada no banco" do
+  test "GET /stats mostra o mapa mesmo sem nenhuma jogada no banco" do
     GameRound.delete_all
 
     get stats_path
 
     assert_response :success
-    assert_match "Ninguém jogou nenhuma rodada ainda.", response.body
-    assert_select "a[href=?]", new_game_path, text: "Jogar agora"
+    assert_not_empty extract_countries
   end
 
   # --- GET /stats/:country_id ---
@@ -59,7 +59,7 @@ class StatsControllerTest < ActionDispatch::IntegrationTest
     get country_stats_path(countries(:edenia))
 
     assert_response :success
-    assert_includes response.body, "Nenhuma rodada registrada para este país ainda."
+    assert_includes response.body, "Esse país ainda não foi jogado."
     assert_equal [], extract_guess_points
   end
 
@@ -71,7 +71,7 @@ class StatsControllerTest < ActionDispatch::IntegrationTest
 
   private
 
-  def extract_played_countries
+  def extract_countries
     doc = Nokogiri::HTML5.parse(response.body)
     map_div = doc.at_css("#stats-map-container")
     JSON.parse(map_div["data-stats-map-countries-value"])
