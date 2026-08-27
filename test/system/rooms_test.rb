@@ -208,6 +208,30 @@ class RoomsTest < ApplicationSystemTestCase
     assert_text "Fim de jogo!"
   end
 
+  # Regressão relatada pelo usuário: trocar de aba ou minimizar dispara
+  # visibilitychange (testado acima), mas trocar pra OUTRO APLICATIVO do
+  # sistema operacional sem minimizar o Chrome muitas vezes não dispara
+  # nada — document.hidden segue false o tempo todo, porque a aba continua
+  # sendo "a aba ativa" da janela. Só um F5 mostrava o estado certo. Este
+  # teste nunca toca document.hidden/visibilitychange, só window.focus, pra
+  # provar que a resincronização não depende de visibilitychange nenhuma vez
+  # — ver room_sync_controller.js.
+  test "aba perdida sem nunca disparar visibilitychange ainda sincroniza quando a janela volta a ficar em foco" do
+    sala = criar_sala_em_andamento_com_rodada_ativa(total_rounds: 1)
+
+    sign_in_as(sala.host)
+    visit room_path(sala)
+
+    assert_text "Rodada 1 de 1"
+
+    avancar_sala_direto_para_finished!(sala)
+    assert_text "Rodada 1 de 1"
+
+    forcar_foco_da_janela
+
+    assert_text "Fim de jogo!"
+  end
+
   # Mesma ideia do teste acima, mas cobrindo a transição PRA DENTRO do jogo a
   # partir da sala de espera — a outra ponta sem room-countdown citada no
   # comentário acima. Sem isso, um jogador que ficou de aba oculta enquanto o
@@ -280,6 +304,10 @@ class RoomsTest < ApplicationSystemTestCase
       Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "#{visibility_state}" })
       document.dispatchEvent(new Event("visibilitychange"))
     JS
+  end
+
+  def forcar_foco_da_janela
+    page.execute_script("window.dispatchEvent(new Event('focus'))")
   end
 
   def esperar_last_activity_mudar(sala, desde:, timeout: 6)

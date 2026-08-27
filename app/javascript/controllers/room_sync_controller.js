@@ -14,10 +14,21 @@ import { Turbo } from "@hotwired/turbo-rails"
  * corretamente no servidor (ver app/jobs/room_sweep_job.rb) — porque
  * nenhum broadcast futuro vai "corrigir" uma transição que ela já perdeu.
  *
- * A correção: sempre que a aba volta a ficar visível, recarrega a página
- * (uma visita Turbo normal em rooms#show, que já sabe montar a view certa
- * pro estado atual e pro usuário atual). Não tenta adivinhar se algo mudou
- * — sempre resincroniza.
+ * A correção: sempre que a aba volta a ficar visível OU a janela volta a
+ * ficar em foco, recarrega a página (uma visita Turbo normal em rooms#show,
+ * que já sabe montar a view certa pro estado atual e pro usuário atual).
+ * Não tenta adivinhar se algo mudou — sempre resincroniza.
+ *
+ * Por que os dois eventos, não só visibilitychange: a Page Visibility API
+ * cobre trocar de aba ou minimizar a janela, mas trocar pra OUTRO
+ * APLICATIVO do sistema operacional sem minimizar o Chrome (ex: Cmd+Tab no
+ * Mac) muitas vezes NÃO dispara visibilitychange nenhum — document.hidden
+ * continua false o tempo todo, porque a aba segue sendo "a aba ativa" da
+ * janela do Chrome, mesmo com o usuário de fato olhando pra outro app. É
+ * exatamente esse o caso relatado: "saí do navegador e voltei" não avançava
+ * sozinho, só um F5 mostrava o estado certo — window.focus é o sinal certo
+ * pra "o usuário voltou a olhar pra essa janela", cobrindo o que
+ * visibilitychange sozinho deixa passar.
  *
  * Fica no elemento raiz de rooms/show.html.erb, FORA de #room_body, pra
  * nunca ser desconectado pelas trocas de conteúdo que os broadcasts fazem
@@ -31,15 +42,17 @@ import { Turbo } from "@hotwired/turbo-rails"
  */
 export default class extends Controller {
   connect() {
-    this.handleVisibilityChange = this.handleVisibilityChange.bind(this)
-    document.addEventListener("visibilitychange", this.handleVisibilityChange)
+    this.handleReturn = this.handleReturn.bind(this)
+    document.addEventListener("visibilitychange", this.handleReturn)
+    window.addEventListener("focus", this.handleReturn)
   }
 
   disconnect() {
-    document.removeEventListener("visibilitychange", this.handleVisibilityChange)
+    document.removeEventListener("visibilitychange", this.handleReturn)
+    window.removeEventListener("focus", this.handleReturn)
   }
 
-  handleVisibilityChange() {
+  handleReturn() {
     if (document.hidden) return
 
     Turbo.visit(window.location.href, { action: "replace" })
