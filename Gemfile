@@ -5,7 +5,7 @@ gem "rails", "~> 8.1"
 # The original asset pipeline for Rails [https://github.com/rails/sprockets-rails]
 gem "sprockets-rails"
 # Use postgresql as the database for Active Record
-gem "pg", "~> 1.1"
+gem "pg", "~> 1.7"
 # PostGIS adapter for geographic data
 gem "activerecord-postgis-adapter", "~> 11.1"
 # Use the Puma web server [https://github.com/puma/puma]
